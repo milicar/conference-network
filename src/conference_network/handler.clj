@@ -5,7 +5,8 @@
             [hiccup.middleware :refer [wrap-base-url]]
             [compojure.handler :as handler]
             [compojure.route :as route]
-            [conference-network.routes.home :refer [home-routes]]))
+            [conference-network.routes.home :refer [home-routes]]
+            [conference-network.views.pages :as p]))
 
 (defn init []
   (println "conference-network is starting"))
@@ -15,7 +16,7 @@
 
 (defroutes app-routes
   (route/resources "/")
-  (route/not-found "Not Found"))
+  (route/not-found (p/not-found)))
 
 (def app
   (-> (routes home-routes app-routes)

@@ -6,4 +6,5 @@
 .lein-failures
 .lein-plugins
 .lein-env
+.nrepl-port
 conference-network.iml

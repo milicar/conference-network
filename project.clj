@@ -12,7 +12,8 @@
   :profiles
   {:uberjar {:aot :all}
    :production
-   {:ring
-    {:open-browser? false, :stacktraces? false, :auto-reload? false}}
+            {:ring
+             {:open-browser? false, :stacktraces? false, :auto-reload? false}}
    :dev
-   {:dependencies [[ring-mock "0.1.5"] [ring/ring-devel "1.5.1"]]}})
+            {:dependencies [[ring/ring-mock "0.3.2"] [ring/ring-devel "1.5.1"] [midje "1.9.1"]] }
+   })

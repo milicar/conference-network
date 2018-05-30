@@ -4,6 +4,7 @@
 (defn common [& body]
   (html5
     [:head
-     [:title "Welcome to conference-network"]
+     [:title "Visualize conference's network"]
      (include-css "/css/screen.css")]
     [:body body]))
+
