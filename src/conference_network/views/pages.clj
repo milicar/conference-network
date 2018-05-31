@@ -15,16 +15,18 @@
 
                  [:div
                   [:form#get-tweets-form {:action "/get-tweets" :method "POST"}
-                   [:p "Event hashtags and/or handles: "]
+                   [:p "Event hashtags and/or handles: " ]
                    [:input {:type "text" :name "hashtags"}]
-                   (if-let [err (:errors (:flash params))]
-                     [:p#err "Found errors: "(vals err) "."])
-                   [:p "Start and end dates: "]
+                   [:p "Start and end dates: (format: YYYY-MM-DD)"]
                    [:input {:type "text" :name "startdate"}]
-                   [:input {:type "text" :name "enddate"}]
+                   [:br]
+                   [:input {:style "margin-top: 0.5%" :type "text" :name "enddate"}]
                    [:p
-                    [:input {:type "submit" :value "Get tweets!"} ]]]
-                   ]))
+                    [:input {:type "submit" :value "Get tweets!"}]]
+                   (if-let [err (:errors (:flash params))]
+                     [:p#err "Errors found: " (for [x (vals err)] [:li x])])
+                   ]]
+                 ))
 
 (defn about []
   (layout/common [:h1 "About"]))
@@ -32,7 +34,7 @@
 (defn get-tweets [params]
   (layout/common [:h1 "Request parameters"]
                  [:ul (for [[k v] params] [:li k" : "v])]
-                 [:p "hashtag value: " (or (:hashtags (:params params)) "nema")]
+                 [:p "hashtag value: " (:hashtags (:params params))]
                  [:p "startdate value: " (:startdate (:params params))]
                  [:p "enddate value: " (:enddate (:params params))]
                  [:p "form-params??: "(interpose "=" (:form-params params))]
