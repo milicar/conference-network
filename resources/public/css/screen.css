@@ -17,6 +17,8 @@ div{
 #lost {
     margin-top: 5%;
     text-align: center;
-    color: red
-    text-decoration: none;
+}
+
+#err {
+   color: red;
 }
