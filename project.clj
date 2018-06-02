@@ -6,7 +6,9 @@
                  [hiccup "1.0.5"]
                  [ring-server "0.4.0"]
                  [bouncer "1.0.1"]
-                 [clojure.java-time "0.3.2"]]
+                 [clojure.java-time "0.3.2"]
+                 [twitter-api "1.8.0"]
+                 [org.clojure/core.async "0.4.474"]]
   :plugins [[lein-ring "0.8.12"]]
   :ring {:handler conference-network.handler/app
          :init conference-network.handler/init
