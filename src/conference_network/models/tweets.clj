@@ -4,7 +4,8 @@
         [twitter.callbacks.handlers]
         [twitter.api.restful])
   (:import [twitter.callbacks.protocols SyncSingleCallback])
-  (:require [java-time :as time]))
+  (:require [java-time :as time]
+            [conference-network.models.graph :as graph]))
 
 ; is it any better to have these written in some config file? when it's in text anyway..
 (def my-creds (make-oauth-creds "3sZ97SzxOsNLwnZgo23MWWbD2"
@@ -26,8 +27,7 @@
   returns (only) date, usable by java-time/local-date"
   [datestring]
   (let [d (clojure.string/split datestring #" ")]
-    (str (last d) "-" (get months (second d)) "-" (get d 2)))
-  )
+    (str (last d) "-" (get months (second d)) "-" (get d 2))))
 
 (defn filter-by-timeframe
   [statuses start end]
@@ -64,7 +64,7 @@
       (assoc-in graph-elements [:edges user-key]
                 (merge-with + (user-key (:edges graph-elements))
                             (reduce
-                              #(assoc %1 (:id_str %2) 1) {} (:user_mentions (:entities status))))))
+                              #(assoc %1 (keyword (:id_str %2)) 1) {} (:user_mentions (:entities status))))))
     graph-elements))
 
 (defn- update-edges-replies
@@ -96,10 +96,6 @@
   (let [graph-elements {:nodes {} :edges {}}]
     (reduce update-graph-elements graph-elements all-statuses)))
 
-(defn make-graph
-  [elements]
-  elements)
-
 
 (defn everything-function
   "downloads tweets, then filters them by timeframe, then extracts graph structure from statuses, then makes graph"
@@ -113,6 +109,6 @@
         :statuses
         (filter-by-timeframe start end)
         parse-statuses
-        make-graph)
+        graph/make-graph)
     ))
 

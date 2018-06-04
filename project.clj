@@ -8,7 +8,8 @@
                  [bouncer "1.0.1"]
                  [clojure.java-time "0.3.2"]
                  [twitter-api "1.8.0"]
-                 [org.clojure/core.async "0.4.474"]]
+                 [org.clojure/core.async "0.4.474"]
+                 [ubergraph "0.5.0"]]
   :plugins [[lein-ring "0.8.12"]]
   :ring {:handler conference-network.handler/app
          :init conference-network.handler/init
