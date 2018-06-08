@@ -15,11 +15,10 @@
 
 (defn add-edges
   [graph edges-map]
-  (let [edges (filter #(not (empty? (val %))) edges-map)]
-    (->> edges
-         (map parse-edges)
-         (apply concat)
-         (g/add-directed-edges* graph))))
+  (->> edges-map
+       (map parse-edges)
+       (apply concat)
+       (g/add-directed-edges* graph)))
 
 (defn make-graph
   [elements]

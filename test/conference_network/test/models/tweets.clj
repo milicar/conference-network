@@ -11,7 +11,6 @@
         [clojure.data]))
 
 
-
 (deftest check-get-tweets
   (with-expect-call (search-tweets [:oauth-creds _ :params p]
                                    (is (= "#somehash" (:q p)))
@@ -19,6 +18,11 @@
                                    (is (= 100 (:count p)))
                                    (is (= "recent" (:content_type p))))
                     (mtw/everything-function {:hashtags "#somehash" :startdate "2018-05-30" :enddate "2018-05-31"})))
+
+(facts "about interpreting-datestring"
+       (fact (mtw/interpret-twitter-datestring "Mon May 28 13:01:21 +0000 2018") => "2018-05-28")
+       (fact "Twitter should provide meaningful datestring, I just translate.."
+             (mtw/interpret-twitter-datestring "Any May 33 00:00:00 +0000 0000") => "0000-05-33"))
 
 
 ;
