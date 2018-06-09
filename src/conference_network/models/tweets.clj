@@ -15,9 +15,29 @@
                                 ))
 
 
-(defn wrap-search-tweets
-  [params]
-  (search-tweets :oauth-creds my-creds :params params))
+(defn get-tweets!
+  "calls Twitter API and downloads tweets for search criteria with paging
+  so far doesn't handle the case when rate limit is reached (limit = 180 calls in 15mins)
+  so far doesn't check if there are newer tweets (published since the search started)
+  returns a collection of statuses"
+  ([q-params]
+    (let [params (assoc q-params :count 100)
+          result (search-tweets :oauth-creds my-creds :params params)]
+      (if (= 100 (count (:statuses (:body result))))
+        (get-tweets! params result (:statuses (:body result)))
+        (:statuses (:body result)))))
+  ([params result statuses]
+   (let [limit-remaining (:x-rate-limit-remaining (:headers result))
+         limit-reset     (:x-rate-limit-reset (:headers result))
+         min_id          (dec (apply min (map :id (:statuses (:body result)))))
+         max_id          (:max_id (:search_metadata (:body result)))
+         new-params      (assoc params :max_id min_id)]
+     (if (> (java.lang.Integer/parseInt limit-remaining) 0)
+       (let [new-res      (search-tweets :oauth-creds my-creds :params new-params)
+             new-statuses (apply merge statuses (:statuses (:body new-res)))]
+         (if (= 100 (count (:statuses (:body new-res))))
+           (get-tweets! params new-res new-statuses)
+           new-statuses))))))
 
 (defn interpret-twitter-datestring
   "interprets twitter's :created_at date format: \"Mon May 28 13:01:21 +0000 2018\"
@@ -128,10 +148,8 @@
   (let [querystr (:hashtags form-params)
         end      (time/plus (time/local-date (:enddate form-params)) (time/days 1))
         start    (time/minus (time/local-date (:startdate form-params)) (time/days 1))
-        response (wrap-search-tweets {:q querystr :until end :count 100 :content_type "recent"})]
+        response (get-tweets! {:q querystr :until end :content_type "recent"})]
     (-> response
-        :body
-        :statuses
         (filter-by-timeframe start end)
         parse-statuses
         graph/make-graph)
