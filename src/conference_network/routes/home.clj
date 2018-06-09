@@ -15,11 +15,12 @@
   (pages/about))
 
 (defn get-form-params
-  "takes request parameters and returns only form parameters with string of hashtags restructured
-  into collection of separate words"
+  "supplies default dates if not entered in form;
+  defaults are :enddate now, :startdate 7 days ago"
   [{p :params}]
-  (let [strs (clojure.string/split (:hashtags p) #" ")]
-    (assoc p :hashtags strs)))
+  (let [enddate (or (not-empty (:enddate p)) (time/format (time/local-date)))
+        startdate (or (not-empty (:startdate p)) (time/format (time/minus (time/local-date enddate) (time/days 7))))]
+    (assoc p :startdate startdate :enddate enddate)))
 
 (defn valid-local-date?
   "wraps java-time parsing of the date so as not to throw exception"
@@ -36,26 +37,27 @@
          (map #(time/local-date "yyyy-MM-dd" %) [startdate enddate])))
 
 (defn validate-form-fields
+  "checks if search string is present and dates are in correct format and order"
   [req-params]
   (let [form-params (get-form-params req-params)]
     (first
       (b/validate form-params
-                  :hashtags [[v/every #(re-matches #"[@|#]\S+" %) :message "Check if all hashtags start with # and handles with @"]]
+                  :hashtags [[v/required :message "Some search terms must be supplied."]]
                   :startdate [[valid-local-date? :message "Check the date format."]]
                   :enddate [[valid-local-date? :message "Check the date format."]
                             [#(valid-timeframe? (:startdate form-params) %) :message "Dates are in the wrong order."]]))))
 
-(defn future-function
-  [nja]
-  (Thread/sleep 10000)
-  (ring/redirect "pages/not-found"))
-
-
-(defn future-try
-  []
-  (do
-   (future (future-function "mamamama"))
-      (pages/not-found)))
+;(defn future-function
+;  [nja]
+;  (Thread/sleep 10000)
+;  (ring/redirect "pages/not-found"))
+;
+;
+;(defn future-try
+;  []
+;  (do
+;   (future (future-function "mamamama"))
+;      (pages/not-found)))
 
 (defn get-tweets
   "routes further depending on the validity of parameters sent through form"
@@ -83,6 +85,6 @@
     (tw/everything-function (get-form-params req-params))))
 
 (defroutes home-routes
-  (GET "/" request (home request))
-  (GET "/about" [] (about))
-  (POST "/get-tweets" request (get-tweets request)))
+           (GET "/" request (home request))
+           (GET "/about" [] (about))
+           (POST "/get-tweets" request (get-tweets request)))
