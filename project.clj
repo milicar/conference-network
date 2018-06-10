@@ -9,7 +9,9 @@
                  [clojure.java-time "0.3.2"]
                  [twitter-api "1.8.0"]
                  [org.clojure/core.async "0.4.474"]
-                 [ubergraph "0.5.0"]]
+                 [ubergraph "0.5.0"]
+                 [org.clojure/java.jdbc "0.7.6"]
+                 [mysql/mysql-connector-java "5.1.38"]]
   :plugins [[lein-ring "0.8.12"]]
   :ring {:handler conference-network.handler/app
          :init conference-network.handler/init

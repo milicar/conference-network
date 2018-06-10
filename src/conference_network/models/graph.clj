@@ -11,7 +11,7 @@
   "parses edges for one source from format [:source {:dest1 weigth1, :dest2 weigth2}] to
   [:source :dest {:weigth x}]"
   [edges]
-  (reduce #(conj %1 [(first edges) (first %2) {:weigth (second %2)}]) [] (second edges)))
+  (reduce #(conj %1 [(first edges) (first %2) {:weight (second %2)}]) [] (second edges)))
 
 (defn add-edges
   [graph edges-map]
