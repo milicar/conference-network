@@ -1,90 +1,78 @@
 (ns conference-network.routes.home
   (:require [compojure.core :refer :all]
             [conference-network.views.pages :as pages]
-            [bouncer.core :as b]
-            [bouncer.validators :as v]
             [java-time :as time]
-            [clojure.core.async :as a]
             [ring.util.response :as ring]
-            [conference-network.models.tweets :as tw]))
+            [conference-network.models.tweets :as tw]
+            [conference-network.routes.validations :as v]
+            [conference-network.models.db :as db]))
 
 (defn home [req-params]
   (pages/home req-params))
 
-(defn about []
-  (pages/about))
+(defn login-form
+  "shows login form"
+  [params]
+  (pages/login params))
 
-(defn get-form-params
+(defn log-user-in
+  "tries to authenticate user and open session"
+  [cred-request]
+  (if-let [err (v/validate-login-input (:params cred-request))]
+    (login-form (assoc-in cred-request [:flash :errors] err))
+    (if-let [valid-user (v/validate-user (:username (:params cred-request)) (:password (:params cred-request)))]
+      (home (assoc-in cred-request [:session :user] (:username valid-user)))
+      (login-form (assoc-in cred-request [:flash :errors] {:creds "Invalid credentials."})))))
+
+(defn log-out
+  "logs user out"
+  [request]
+  (home (assoc request :session {})))
+
+(defn account-form
+  "shows form for creating new user account"
+  [request]
+  (pages/create-account request))
+
+(defn create-account
+  "creates new account for a unique username"
+  [request]
+  (let [username (:username (:params request))
+        password (:password (:params request))]
+    (if (v/username-reserved? username)
+      (pages/create-account (assoc-in request [:flash :error]
+                                      {:err "User with this username already exists."}))
+      (do (db/create-account username password)
+          (home (assoc-in request [:session :user] username))))))
+
+(defn- get-form-params
   "supplies default dates if not entered in form;
   defaults are :enddate now, :startdate 7 days ago"
   [{p :params}]
-  (let [enddate (or (not-empty (:enddate p)) (time/format (time/local-date)))
+  (let [enddate   (or (not-empty (:enddate p)) (time/format (time/local-date)))
         startdate (or (not-empty (:startdate p)) (time/format (time/minus (time/local-date enddate) (time/days 7))))]
     (assoc p :startdate startdate :enddate enddate)))
-
-(defn valid-local-date?
-  "wraps java-time parsing of the date so as not to throw exception"
-  [date-string]
-  (time/local-date?
-    (try
-      (time/local-date "yyyy-MM-dd" (clojure.string/trim date-string))
-       (catch Exception e))))
-
-(defn valid-timeframe?
-  "for two date-strings checks if first is not after the second"
-  [startdate enddate]
-  (apply (complement time/after?)
-         (map #(time/local-date "yyyy-MM-dd" %) [startdate enddate])))
-
-(defn validate-form-fields
-  "checks if search string is present and dates are in correct format and order"
-  [req-params]
-  (let [form-params (get-form-params req-params)]
-    (first
-      (b/validate form-params
-                  :hashtags [[v/required :message "Some search terms must be supplied."]]
-                  :startdate [[valid-local-date? :message "Check the date format."]]
-                  :enddate [[valid-local-date? :message "Check the date format."]
-                            [#(valid-timeframe? (:startdate form-params) %) :message "Dates are in the wrong order."]]))))
-
-;(defn future-function
-;  [nja]
-;  (Thread/sleep 10000)
-;  (ring/redirect "pages/not-found"))
-;
-;
-;(defn future-try
-;  []
-;  (do
-;   (future (future-function "mamamama"))
-;      (pages/not-found)))
 
 (defn get-tweets
   "routes further depending on the validity of parameters sent through form"
   [req-params]
-  (if-let [errors (validate-form-fields req-params)]
-    (pages/home (assoc req-params :flash {:errors errors}))
-    ; something along the lines of: call a function that downloads tweets and makes a graph and prepares visualization
-    ; in the meantime, route to a page that says "wait for the result", and then, when result is ready, load the
-    ; visualization and buttons and all (to that same page).. so, a separate thread for computations?
-
-    ;(do (let [t (a/thread (Thread/sleep 10000) "pages/not-found")]
-    ;      (a/go  (ring/redirect (a/<! t))))
-    ;    (pages/get-tweets req-params))))
-
-    ;(do (let [f (future (future-function "anystring"))]
-    ;      (pages/get-tweets req-params)
-    ;      (if (future-done? f) @f)))))
-
-    ;(let [p (promise)]
-    ;  (future (Thread/sleep 5000) (ring/redirect @p))
-    ;  (deliver p "pages/not-found")
-    ;  (pages/get-tweets req-params))))
-
-    ;    so, printlns work, but redirects don't... going with one thread for now..
-    (tw/everything-function (get-form-params req-params))))
+  (let [form-input (get-form-params req-params)
+        hashtags (:hashtags form-input)
+        startdate (:startdate form-input)
+        enddate (:enddate form-input)]
+    (if-let [errors (v/validate-form-fields form-input)]
+      (pages/home (assoc req-params :flash {:errors errors
+                                            :inputs {:hashtags hashtags
+                                                     :startdate startdate
+                                                     :enddate enddate}}))
+        (tw/everything-function (get-form-params req-params)))))
 
 (defroutes home-routes
            (GET "/" request (home request))
-           (GET "/about" [] (about))
-           (POST "/get-tweets" request (get-tweets request)))
+           (POST "/get-tweets" request (get-tweets request))
+           (GET "/login" params (login-form params))
+           (POST "/login" cred-request (log-user-in cred-request))
+           (GET "/logout" request (log-out request))
+           (GET "/account" request (account-form request))
+           (POST "/account" request (create-account request))
+           )

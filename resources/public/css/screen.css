@@ -5,13 +5,21 @@ body {
     font-weight: bold;
 }
 
-h1 {
+h1{
+    text-align: center;
+}
+
+h2{
     text-align: center;
 }
 
 div{
     margin-left: 10%;
-    margin-right: 10%
+    margin-right: 10%;
+}
+
+#login{
+    margin-left: 30%;
 }
 
 #lost {
@@ -22,3 +30,17 @@ div{
 #err {
    color: red;
 }
+
+#nav {
+    text-align: right;
+}
+
+#navlink{
+    text-decoration: none;
+    color: gray;
+    padding-left: 2px;
+    padding-right: 2px;
+}
+
+
+

@@ -22,6 +22,11 @@
       first
       :user_id))
 
+(defn check-user
+  "checks if there is a user with specified credentials"
+  [user pass]
+  (db/query mysql-db ["SELECT * FROM user WHERE username = ? AND password = ?" user pass]))
+
 (defn update-password
   "updates a user account"
   [user pass]
