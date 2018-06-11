@@ -2,10 +2,12 @@
   (:require [compojure.core :refer :all]
             [conference-network.views.pages :as pages]
             [java-time :as time]
-            [ring.util.response :as ring]
             [conference-network.models.tweets :as tw]
             [conference-network.routes.validations :as v]
-            [conference-network.models.db :as db]))
+            [conference-network.models.db :as db]
+            [conference-network.models.graph :as g]
+            [noir.session :as session]
+            [noir.response :as resp]))
 
 (defn home [req-params]
   (pages/home req-params))
@@ -21,13 +23,15 @@
   (if-let [err (v/validate-login-input (:params cred-request))]
     (login-form (assoc-in cred-request [:flash :errors] err))
     (if-let [valid-user (v/validate-user (:username (:params cred-request)) (:password (:params cred-request)))]
-      (home (assoc-in cred-request [:session :user] (:username valid-user)))
+      (do (session/put! :user (:username valid-user))
+          (resp/redirect "/"))
       (login-form (assoc-in cred-request [:flash :errors] {:creds "Invalid credentials."})))))
 
 (defn log-out
   "logs user out"
   [request]
-  (home (assoc request :session {})))
+  (do (session/clear!)
+      (resp/redirect "/")))
 
 (defn account-form
   "shows form for creating new user account"
@@ -43,7 +47,36 @@
       (pages/create-account (assoc-in request [:flash :error]
                                       {:err "User with this username already exists."}))
       (do (db/create-account username password)
-          (home (assoc-in request [:session :user] username))))))
+          (session/put! :user username)
+          (resp/redirect "/")))))
+
+(defn my-graphs
+  "lists all graphs for a user"
+  [request]
+  (pages/my_graphs (assoc-in request [:flash :graphs]
+                             (-> (db/get-graphs (session/get :user))))))
+
+(defn save-graph
+  "saves user's graph to database"
+  [request]
+  (db/save-graph (session/get :user) (get (:form-params request) "new-graph") (get (:form-params request) "name"))
+  (my-graphs request))
+
+(defn show-graph
+  "shows a single graph"
+  [request]
+  (pages/visualize
+    (-> (get-in request [:params :show-graph])
+        (g/deserialize-graph)
+        (#(assoc request :graph %)))))
+
+(defn delete-graph
+  "deletes a graph"
+  [request]
+  (-> (get-in request [:params :delete-graph])
+      (db/get-graph-id)
+      (db/delete-graph))
+  (my-graphs request))
 
 (defn- get-form-params
   "supplies default dates if not entered in form;
@@ -56,23 +89,21 @@
 (defn get-tweets
   "routes further depending on the validity of parameters sent through form"
   [req-params]
-  (let [form-input (get-form-params req-params)
-        hashtags (:hashtags form-input)
-        startdate (:startdate form-input)
-        enddate (:enddate form-input)]
+  (let [form-input (get-form-params req-params)]
     (if-let [errors (v/validate-form-fields form-input)]
-      (pages/home (assoc req-params :flash {:errors errors
-                                            :inputs {:hashtags hashtags
-                                                     :startdate startdate
-                                                     :enddate enddate}}))
-        (tw/everything-function (get-form-params req-params)))))
+      (pages/home (assoc req-params :flash {:errors errors}))
+      (pages/visualize (assoc req-params
+                         :graph (tw/everything-function (get-form-params req-params)))))))
 
 (defroutes home-routes
            (GET "/" request (home request))
-           (POST "/get-tweets" request (get-tweets request))
+           (POST "/visualize" request (get-tweets request))
            (GET "/login" params (login-form params))
            (POST "/login" cred-request (log-user-in cred-request))
            (GET "/logout" request (log-out request))
            (GET "/account" request (account-form request))
            (POST "/account" request (create-account request))
-           )
+           (GET "/my_graphs" request (my-graphs request))
+           (POST "/save_graph" request (save-graph request))
+           (POST "/show_graph" request (show-graph request))
+           (POST "/delete_graph" request (delete-graph request)))

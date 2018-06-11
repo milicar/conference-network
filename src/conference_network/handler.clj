@@ -6,7 +6,8 @@
             [compojure.handler :as handler]
             [compojure.route :as route]
             [conference-network.routes.home :refer [home-routes]]
-            [conference-network.views.pages :as p]))
+            [conference-network.views.pages :as p]
+            [noir.session :as session]))
 
 (defn init []
   (println "conference-network is starting"))
@@ -21,4 +22,6 @@
 (def app
   (-> (routes home-routes app-routes)
       (handler/site)
-      (wrap-base-url)))
+      (wrap-base-url)
+      (session/wrap-noir-flash)
+      (session/wrap-noir-session)))

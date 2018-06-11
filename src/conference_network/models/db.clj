@@ -39,15 +39,15 @@
 
 (defn save-graph
   "saves a graph for a user"
-  [user graph]
+  [user graph name]
   (let [user-id (get-user-id user)]
-    (db/insert! mysql-db :network_graph {:user_id user-id :graph graph})))
+    (db/insert! mysql-db :network_graph {:user_id user-id :graph graph :graph_name name})))
 
 (defn get-graphs
   "retrieves all the graphs for a user"
   [user]
   (let [user-id (get-user-id user)]
-    (db/query mysql-db ["SELECT graph FROM network_graph WHERE user_id = ?" user-id])))
+    (db/query mysql-db ["SELECT graph_name, graph FROM network_graph WHERE user_id = ?" user-id])))
 
 (defn get-graph-id
   "retrieves id of a graph"
@@ -61,10 +61,16 @@
   [graph-id]
   (db/query mysql-db ["SELECT * FROM network_graph WHERE graph_id = ?" graph-id]))
 
+(defn get-graph-by-value
+  "retrieves a graph based on value"
+  [graph]
+  (db/query mysql-db ["SELECT * FROM network_graph WHERE graph = ?" graph]))
+
 (defn update-graph
   "updates a graph"
-  [graph-id new-value]
-  (db/update! mysql-db :network_graph {:graph new-value} ["graph_id = ?" graph-id]))
+  [graph-id new-value new-name]
+  (db/update! mysql-db :network_graph {:graph new-value :graph_name new-name}
+              ["graph_id = ?" graph-id]))
 
 (defn delete-graph
   "deletes a graph from database"

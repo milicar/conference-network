@@ -25,6 +25,7 @@ DROP TABLE IF EXISTS `network_graph`;
 CREATE TABLE `network_graph` (
   `graph_id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
+  `graph_name` varchar(100) NOT NULL,
   `graph` longtext,
   PRIMARY KEY (`graph_id`),
   UNIQUE KEY `graph_id_UNIQUE` (`graph_id`),
@@ -53,7 +54,7 @@ CREATE TABLE `user` (
 insert into `user`(`user_id`,`username`,`password`) values
 (1,'milica','milica'),
 (2,'user','user'),
-(2,'ivana','ivana');
+(3,'ivana','ivana');
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
