@@ -19,12 +19,17 @@
   (apply (complement time/after?)
          (map #(time/local-date "yyyy-MM-dd" %) [startdate enddate])))
 
+(defn non-empty-string?
+  "checks for empty string"
+  [str]
+  (not (empty? (clojure.string/trim str))))
+
 (defn validate-form-fields
   "checks if search string is present and dates are in correct format and order"
   [req-params]
   (first
     (b/validate req-params
-                :hashtags [[v/required :message "Some search terms must be supplied."]]
+                :hashtags [[non-empty-string? :message "Some search terms must be supplied."]]
                 :startdate [[valid-local-date? :message "Check start date format."]]
                 :enddate [[valid-local-date? :message "Check end date format."]
                           [#(valid-timeframe? (:startdate req-params) %) :message "Dates are in the wrong order."]])))

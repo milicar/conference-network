@@ -54,7 +54,7 @@
   "lists all graphs for a user"
   [request]
   (pages/my_graphs (assoc-in request [:flash :graphs]
-                             (-> (db/get-graphs (session/get :user))))))
+                             (db/get-graphs (session/get :user)))))
 
 (defn save-graph
   "saves user's graph to database"
