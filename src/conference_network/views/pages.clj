@@ -3,7 +3,8 @@
             [conference-network.views.layout :as layout]
             [conference-network.models.graph :as graph]
             [conference-network.models.db :as db]
-            [noir.session :as session]))
+            [noir.session :as session]
+            [conference-network.views.vega :as vega]))
 
 (defn home [params]
   (layout/common
@@ -75,6 +76,7 @@
       [:tr
        [:td [:form {:action "/show_graph" :method "POST"}
              [:input {:type "hidden" :name "show-graph" :value (:graph g)}]
+             [:input {:type "hidden" :name "graph-name" :value (:graph_name g)}]
              [:p (:graph_name g)]
              [:input {:type "submit" :value "Show graph"}]]]
        [:td
@@ -86,10 +88,15 @@
   [params]
   (layout/viz
     [params]
+    [:h1 (if-let [gr-name (:graph-name (:params params))]
+           (str gr-name " graph")
+           (str "Graph for search terms: " (:hashtags (:params params))))]
     [:div#view]
-    ;[:script "vegaEmbed('#view', 'https://vega.github.io/vega/examples/bar-chart.vg.json');"]
-    [:h1 "graph"]
-    [:div (with-out-str (ubergraph.core/pprint (:graph params)))]
+    [:script (str "vegaEmbed('#view', " (vega/make-vega-spec (:graph params)) ");")]
+    ; print if no vega:
+    ;[:div (with-out-str (ubergraph.core/pprint (:graph params)))]
+    ; bug! graph equality: "value objects" so two equal graphs can have != ids
+    ; so testing serialized value for existence in db, but sometimes it gets it wrong!
     (when-not (nil? (session/get :user))
       (when (empty? (db/get-graph-by-value (graph/serialize-graph (:graph params))))
         [:div#unimportant

@@ -55,4 +55,8 @@ div{
    display: inline-block;
 }
 
+.vega-actions-wrapper {
+    visibility: hidden;
+}
+
 
