@@ -85,23 +85,23 @@
          [:input {:type "submit" :value "Delete graph"}]]]])))
 
 (defn visualize
-  [params]
+  [{:keys [params tweets-and-graph] :as all}]
   (layout/viz
-    [params]
-    [:h1 (if-let [gr-name (:graph-name (:params params))]
+    [all]
+    [:h1 (if-let [gr-name (:graph-name params)]
            (str gr-name " graph")
-           (str "Graph for search terms: " (:hashtags (:params params))))]
+           (str "Graph for search terms: " (:hashtags params)))]
     [:div#view]
-    [:script (str "vegaEmbed('#view', " (vega/make-vega-spec (:graph params)) ");")]
+    [:script (str "vegaEmbed('#view', " (vega/make-vega-spec (:graph tweets-and-graph)) ");")]
     ; print if no vega:
     ;[:div (with-out-str (ubergraph.core/pprint (:graph params)))]
     ; bug! graph equality: "value objects" so two equal graphs can have != ids
     ; so testing serialized value for existence in db, but sometimes it gets it wrong!
     (when-not (nil? (session/get :user))
-      (when (empty? (db/get-graph-by-value (graph/serialize-graph (:graph params))))
+      (when (empty? (db/get-graph-by-value (graph/serialize-graph (:graph tweets-and-graph))))
         [:div#unimportant
          [:form#login {:action "/save_graph" :method "POST"}
-          [:input {:type "hidden" :name "new-graph" :value (graph/serialize-graph (:graph params))}]
+          [:input {:type "hidden" :name "new-graph" :value (graph/serialize-graph (:graph tweets-and-graph))}]
           [:p#inline "Graph name:" [:input {:type "text" :name "name"}]]
           [:input#savegraphbutton {:type "submit" :value "Save graph"}]]]))))
 

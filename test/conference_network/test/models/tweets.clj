@@ -17,7 +17,7 @@
                                    (is (= (time/local-date "2018-06-01") (:until p)))
                                    (is (= 100 (:count p)))
                                    (is (= "recent" (:content_type p))))
-                    (mtw/everything-function {:hashtags "#somehash" :startdate "2018-05-30" :enddate "2018-05-31"})))
+                    (mtw/get-tweets-and-graph {:hashtags "#somehash" :startdate "2018-05-30" :enddate "2018-05-31"})))
 
 (facts "about interpreting-datestring"
        (fact (mtw/interpret-twitter-datestring "Mon May 28 13:01:21 +0000 2018") => "2018-05-28")

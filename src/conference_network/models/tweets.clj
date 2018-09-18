@@ -3,7 +3,6 @@
         [twitter.callbacks]
         [twitter.callbacks.handlers]
         [twitter.api.restful])
-  (:import [twitter.callbacks.protocols SyncSingleCallback])
   (:require [java-time :as time]
             [conference-network.models.graph :as graph]))
 
@@ -135,23 +134,44 @@
          (update-edges-replies user status))))
 
 
-(defn parse-statuses
-  "parses statuses one at a time"
+(defn extract-graph-elements
+  "parses statuses one at a time and collects elements for a graph
+  input: a collection of statuses from twitter
+  output: elements of a graph: {:nodes {:tw-id {:name \"name\" :screen-name \"scr-n\"}}
+                               {:edges {:id-src {:id-dest weight/count}}}"
   [all-statuses]
   (let [graph-elements {:nodes {} :edges {}}]
     (reduce update-graph-elements graph-elements all-statuses)))
 
 
-(defn everything-function
-  "downloads tweets, then filters them by timeframe, then extracts graph structure from statuses, then makes graph"
+(defn get-tweets-and-graph
+  "downloads tweets and makes a graph; puts both tweets and a graph to a map and returns it
+  input: query parameters: {:hashtags #somehash :startdate date :enddate date}
+  output: map {:tweets all-the-tweets :graph resulting-graph"
   [form-params]
   (let [querystr (:hashtags form-params)
         end      (time/plus (time/local-date (:enddate form-params)) (time/days 1))
         start    (time/minus (time/local-date (:startdate form-params)) (time/days 1))
         response (get-tweets! {:q querystr :until end :content_type "recent"})]
-    (-> response
-        (filter-by-timeframe start end)
-        parse-statuses
-        graph/make-graph)
-    ))
+    (assoc {} :tweets response :graph (-> response
+                                              (filter-by-timeframe start end)
+                                              (extract-graph-elements)
+                                              (graph/make-graph)))))
+
+(defn num-one-status
+  "updates tweets count based on one status
+  input: counts map: {:user-id count} or empty and one status/tweet
+  output: map: {:user-id count}"
+  [res status]
+  (let [user (keyword (:id_str (:user status)))]
+    (if (nil? (user res))
+     (assoc res user 1)
+     (update res user inc))))
+
+(defn number-of-tweets-per-user
+  "counts tweets/statuses per user
+  input: statuses
+  output: map {:user-id statuses-count}"
+  [statuses]
+  (reduce num-one-status {} statuses))
 

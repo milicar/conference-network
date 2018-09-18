@@ -93,7 +93,7 @@
     (if-let [errors (v/validate-form-fields form-input)]
       (pages/home (assoc req-params :flash {:errors errors}))
       (pages/visualize (assoc req-params
-                         :graph (tw/everything-function (get-form-params req-params)))))))
+                         :tweets-and-graph (tw/get-tweets-and-graph (get-form-params req-params)))))))
 
 (defroutes home-routes
            (GET "/" request (home request))
