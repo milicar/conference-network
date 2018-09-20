@@ -164,9 +164,9 @@
   output: map: {:user-id count}"
   [res status]
   (let [user (keyword (:id_str (:user status)))]
-    (if (nil? (user res))
-     (assoc res user 1)
-     (update res user inc))))
+    (if (user res)
+      (update res user inc)
+      (assoc res user 1))))
 
 (defn number-of-tweets-per-user
   "counts tweets/statuses per user
