@@ -1,14 +1,24 @@
 (ns conference-network.models.decision-tree)
 
 
+
+(defn square [n]
+  (* n n))
+
+(defn op
+  [value]
+  (if (not-any? #(instance? % value) [Long Double Float Integer Number])
+    '=
+    '>=))
+
+
 (defn divide-set
   "divides input data into two sets
   input: rows: list of maps, column: key, value: number or string
   output: map {true [rec1 rec2], false [rec3]}"
   [rows column value]
-  (if (not-any? #(instance? % value) [Long Double Float Integer Number])
-    (group-by #(= (column %) value) rows)
-    (group-by #(>= (column %) value) rows)))
+  (let [op (op value)]
+     (group-by #((eval op) (column %) value) rows)))
 
 
 (defn unique-counts
@@ -18,10 +28,6 @@
   [rows]
   (->> (group-by :result rows)
        (map #(assoc {} :result (key %) :count (count (val %))))))
-
-
-(defn square [n]
-  (* n n))
 
 
 (defn gini-impurity
@@ -99,16 +105,38 @@
     (into {} (unique-counts (apply conj (get data true) (get data false))))))
 
 (defn build-tree
-  [rows score-fn]
-  (if (= 0 (count rows))
-    (leaf rows)
-    (let [col-val-combos (column-value-combos rows)      ;all the combos to check
-          best-split (find-best-split rows col-val-combos score-fn)]
-      (if (> (:gain best-split) 0 )
-        (let [true-split (get best-split true)
-              false-split (get best-split false)]
-          (branch best-split (map #(build-tree % gini-impurity) [true-split false-split])))
-        (leaf best-split)))))
+  "builds a tree of maps
+  input: rows/observations, optionally score function
+  output: tree structure of maps"
+  ([rows]
+   (build-tree rows gini-impurity))
+  ([rows score-fn]
+    (if (= 0 (count rows))
+      (leaf rows)
+      (let [col-val-combos (column-value-combos rows)      ;all the combos to check
+            best-split (find-best-split rows col-val-combos score-fn)]
+        (if (> (:gain best-split) 0 )
+          (let [true-split (get best-split true)
+                false-split (get best-split false)]
+            (branch best-split (map #(build-tree % gini-impurity) [true-split false-split])))
+          (leaf best-split))))))
+
+
+
+(defn predict
+  "predicts class for one new observation; does not update the tree
+  input: tree, new observation
+  output: {:result res :count n}"
+  [tree row]
+  (if (:result tree)
+    tree
+    (let [operator (op (:value tree))]
+      (if ((eval operator) ((:column tree) row) (:value tree))
+        (predict (first (:children tree)) row)
+        (predict (second (:children tree)) row)))))
+
+
+
 
 
 
