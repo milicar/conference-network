@@ -135,7 +135,27 @@
         (predict (first (:children tree)) row)
         (predict (second (:children tree)) row)))))
 
-
+;
+;(defn prune
+;  [tree mingain]
+;  (let [children (:children tree)]
+;    (when (contains? (first children) :column)
+;      (prune (first children) mingain))
+;    (when (contains? (second children) :column)
+;      (prune (second children) mingain))
+;    (when (and (contains? (first children) :result)
+;               (contains? (second children) :result))
+;      (let [true-br (first children)
+;            true-rows (repeat (:count true-br) true-br)
+;            false-br (second children)
+;            false-rows (repeat (:count false-br) false-br)
+;            all-rows (flatten (conj true-rows false-rows))
+;            delta (- (gini-impurity all-rows)            ;???
+;                     (/ (+ (gini-impurity true-rows)
+;                           (gini-impurity false-rows)) 2))]
+;        (when (< delta mingain)
+;          (unique-counts all-rows))))))
+      ; recreate the whole tree except this part.. ??
 
 
 
