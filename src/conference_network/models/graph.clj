@@ -1,11 +1,12 @@
 (ns conference-network.models.graph
-  (:require [ubergraph.core :as g]
-            [loom.alg]))
+  (:require [ubergraph.core :as ug]
+            [loom.alg]
+            [conference-network.models.jungerer-graph :as jg]))
 
 
 (defn add-nodes
   [graph nodes-map]
-  (g/add-nodes-with-attrs* graph nodes-map))
+  (ug/add-nodes-with-attrs* graph nodes-map))
 
 
 (defn parse-edges
@@ -19,11 +20,11 @@
   (->> edges-map
        (map parse-edges)
        (apply concat)
-       (g/add-directed-edges* graph)))
+       (ug/add-directed-edges* graph)))
 
 (defn make-graph
   [elements]
-  (let [graph (g/digraph)]
+  (let [graph (ug/digraph)]
     (-> graph
         (add-nodes (:nodes elements))
         (add-edges (:edges elements)))))
@@ -40,14 +41,63 @@
 (defn get-node-degree-centralities
   "returns map of node id, in-degree and out-degree"
   [graph]
-  (let [node-count (g/count-nodes graph)]
+  (let [node-count (ug/count-nodes graph)]
     (map #(assoc {}
           :id (identity %)
-          :in-degree-centr (/ (g/in-degree graph %) node-count)
-          :out-degree-centr (/ (g/out-degree graph %) node-count))
-       (g/nodes graph))))
+          :in-degree-centr (/ (ug/in-degree graph %) node-count)
+          :out-degree-centr (/ (ug/out-degree graph %) node-count))
+       (ug/nodes graph))))
+
+(defn get-node-betweenness-centralities
+  "for each node, finds betweenness centrality score
+  input: ubergraph
+  output: sequence of maps: {:node centrality-score}"
+  [graph]
+  (jg/betweenness-centralities graph))
 
 
+(defn get-node-closeness-centralities
+  "for each node, finds closeness centrality score
+  input: ubergraph
+  output: sequence of maps: {:node centrality-score}"
+  [graph]
+  (jg/closeness-centralities graph))
+
+
+(defn get-node-eigenvector-centralities
+  "for each node, finds eigenvector centrality score
+  input: ubergraph
+  output: sequence of maps: {:node centrality-score}"
+  [graph]
+  (jg/eigenvector-centralities graph))
+
+
+(defn get-node-pagerank-centralities
+  "for each node, finds pagerank centrality score
+  input: ubergraph
+  output: sequence of maps: {:node centrality-score}"
+  [graph]
+  (jg/pagerank-centralities graph))
+
+
+(defn get-weak-components-nodes
+  "for each node, assigns 1 if it belongs to a weak component (graph is directed!),
+   0 if not
+  input: ubergraph
+  output: sequence of maps: {:node 0/1}"
+  [graph]
+  (jg/nodes-by-weak-components graph))
+
+
+(defn get-eb-clusters-nodes
+  "for each node, assigns 1 if it belongs to any cluster, 0 if not
+  input: ubergraph, number of nodes to remove
+  output: sequence of maps: {:node 0/1}"
+  [graph remove-n-nodes]
+  (jg/nodes-by-edge-betweenness-clusters graph remove-n-nodes))
+
+
+;;; halted on one occasion, needs further checking
 (defn clique-belonging-nodes
   "for each node in graph, assigns 1 if it belongs to a clique,
   0 otherwise;
@@ -60,5 +110,5 @@
     (map #(assoc {}
             :id (identity %)
             :in-clique (if (contains? all-nodes (identity %)) 1 0))
-         (g/nodes graph))))
+         (ug/nodes graph))))
 

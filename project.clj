@@ -13,7 +13,8 @@
                  [org.clojure/java.jdbc "0.7.6"]
                  [mysql/mysql-connector-java "5.1.38"]
                  [lib-noir "0.9.9"]
-                 [org.clojure/data.json "0.2.6"]]
+                 [org.clojure/data.json "0.2.6"]
+                 [jungerer "0.4.1"]]
   :plugins [[lein-ring "0.8.12"]]
   :ring {:handler conference-network.handler/app
          :init conference-network.handler/init

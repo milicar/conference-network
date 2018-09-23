@@ -1,1 +1,1 @@
-{:dbtype "mysql", :dbname "conference_network", :user "root", :password "pass", :useSSL "false"}
+{:dbtype "mysql", :dbname "conference_network", :user "", :password "", :useSSL "false"}

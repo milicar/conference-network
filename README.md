@@ -24,6 +24,7 @@ You will need MySql installed.
 * Ubergraph - general-purpose graph data structure for Clojure
 * Midje - test framework
 * Expect-call - library for mocking function calls
+* Jungerer - clojure network/graph library wrapping JUNG.
 
 
 ## About
