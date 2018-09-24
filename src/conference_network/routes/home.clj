@@ -78,6 +78,12 @@
       (db/delete-graph))
   (my-graphs request))
 
+(defn predict
+  "predicts which nodes will not communicate post event"
+  [request]
+  (pages/visualize (assoc-in request [:tweets-and-graph :graph]
+                             (g/classify-graph-nodes (:graph (:tweets-and-graph request))))))
+
 (defn- get-form-params
   "supplies default dates if not entered in form;
   defaults are :enddate now, :startdate 7 days ago"
@@ -106,4 +112,5 @@
            (GET "/my_graphs" request (my-graphs request))
            (POST "/save_graph" request (save-graph request))
            (POST "/show_graph" request (show-graph request))
-           (POST "/delete_graph" request (delete-graph request)))
+           (POST "/delete_graph" request (delete-graph request))
+           (POST "/predict" request (predict request)))

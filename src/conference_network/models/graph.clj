@@ -1,7 +1,8 @@
 (ns conference-network.models.graph
   (:require [ubergraph.core :as ug]
             [loom.alg]
-            [conference-network.models.jungerer-graph :as jg]))
+            [conference-network.models.jungerer-graph :as jg]
+            [conference-network.models.decision-tree :as dtree]))
 
 
 (defn add-nodes
@@ -43,9 +44,9 @@
   [graph]
   (let [node-count (ug/count-nodes graph)]
     (map #(assoc {}
-          :id (identity %)
-          :in-degree-centr (/ (ug/in-degree graph %) node-count)
-          :out-degree-centr (/ (ug/out-degree graph %) node-count))
+          (identity %)
+          (vector (double (/ (ug/in-degree graph %) node-count))
+                  (double (/ (ug/out-degree graph %) node-count))))
        (ug/nodes graph))))
 
 (defn get-node-betweenness-centralities
@@ -112,3 +113,25 @@
             :in-clique (if (contains? all-nodes (identity %)) 1 0))
          (ug/nodes graph))))
 
+
+(defn classify-graph-nodes
+  "for each node, gets all the variables, and then calls decision-tree/predict
+  input: ubergraph
+  output: ubergraph"
+  [graph]
+  (let [deg-centralities (get-node-degree-centralities graph)
+        betw-centralities (get-node-betweenness-centralities graph)
+        clos-centralities (get-node-closeness-centralities graph)
+        prank-centralities (get-node-pagerank-centralities graph)
+        eb-cluster-members (get-eb-clusters-nodes graph 10)]   ;decide on a number of nodes to remove ??
+    (->> (map #(assoc {}
+            :id (identity %)
+            :in-degree (first (% deg-centralities))
+            :out-degree (second (% deg-centralities))
+            :betweenness (% betw-centralities)
+            :closeness (% clos-centralities)
+            :pagerank (% prank-centralities)
+            :in-cluster (% eb-cluster-members))
+         (ug/nodes graph))
+         (map #(assoc % :result (dtree/predict dtree/initialize-tree %)))
+         (map #(ug/add-attr graph (:id %) :result (:result %))))))

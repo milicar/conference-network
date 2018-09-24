@@ -7,10 +7,12 @@
             [compojure.route :as route]
             [conference-network.routes.home :refer [home-routes]]
             [conference-network.views.pages :as p]
+            [conference-network.models.decision-tree :as dtree]
             [noir.session :as session]))
 
 (defn init []
-  (println "conference-network is starting"))
+  (println "conference-network is starting")
+  (def tree (dtree/initialize-tree dtree/data)))
 
 (defn destroy []
   (println "conference-network is shutting down"))
