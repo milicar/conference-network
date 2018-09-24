@@ -68,7 +68,7 @@
   (pages/visualize
     (-> (get-in request [:params :show-graph])
         (g/deserialize-graph)
-        (#(assoc request :graph %)))))
+        (#(assoc-in request [:tweets-and-graph :graph] %)))))
 
 (defn delete-graph
   "deletes a graph"
@@ -80,9 +80,9 @@
 
 (defn predict
   "predicts which nodes will not communicate post event"
-  [request]
-  (pages/visualize (assoc-in request [:tweets-and-graph :graph]
-                             (g/classify-graph-nodes (:graph (:tweets-and-graph request))))))
+  [{:keys [params] :as request}]
+  (pages/visualize (assoc request :graph
+                             (g/classify-graph-nodes (g/deserialize-graph(:predict params))))))
 
 (defn- get-form-params
   "supplies default dates if not entered in form;

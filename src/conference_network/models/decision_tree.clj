@@ -180,6 +180,5 @@
   {:1 "kiwi" :2 "France" :3 "yes" :4 19 :result "basic"}])
 
 
-(def initialize-tree
-  (memoize build-tree))
+;(def initialize-tree (build-tree data))
 

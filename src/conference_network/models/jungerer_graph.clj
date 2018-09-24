@@ -46,8 +46,12 @@
   [ubergraph kind]
   (let [jungraph (ubergraph->jung ubergraph)
         scorer ((kind centralities) jungraph)]
-    (map #(assoc {} % (alg/score scorer %))
-         (jungerer.graph/nodes jungraph))))
+    (map (fn [node]
+           (let [score (alg/score scorer node)]
+             (assoc {} node (if (= nil score)
+                              0
+                              score))))
+             (jungerer.graph/nodes jungraph))))
 
 
 (defn betweenness-centralities

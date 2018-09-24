@@ -12,7 +12,8 @@
 
 (defn init []
   (println "conference-network is starting")
-  (def tree (dtree/initialize-tree dtree/data)))
+  ;(def tree (dtree/initialize-tree dtree/data))
+  )
 
 (defn destroy []
   (println "conference-network is shutting down"))

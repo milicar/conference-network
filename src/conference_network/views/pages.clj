@@ -94,12 +94,13 @@
     [:div#view]
     [:script (str "vegaEmbed('#view', " (vega/make-vega-spec (:graph tweets-and-graph)) ");")]
     [:form {:action "/predict" :method "POST"}
-     [:input {:type "hidden" :name "predict" :value tweets-and-graph}]
+     [:input {:type "hidden" :name "predict" :value (graph/serialize-graph (:graph tweets-and-graph))}]
      [:input {:type "submit" :value "Predict"}]]
     ; print if no vega:
     ;[:div (with-out-str (ubergraph.core/pprint (:graph params)))]
     ; bug! graph equality: "value objects" so two equal graphs can have != ids
     ; so testing serialized value for existence in db, but sometimes it gets it wrong!
+    ;[:div (str all)]
     (when-not (nil? (session/get :user))
       (when (empty? (db/get-graph-by-value (graph/serialize-graph (:graph tweets-and-graph))))
         [:div#unimportant

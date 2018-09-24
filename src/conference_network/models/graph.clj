@@ -119,19 +119,19 @@
   input: ubergraph
   output: ubergraph"
   [graph]
-  (let [deg-centralities (get-node-degree-centralities graph)
-        betw-centralities (get-node-betweenness-centralities graph)
-        clos-centralities (get-node-closeness-centralities graph)
-        prank-centralities (get-node-pagerank-centralities graph)
-        eb-cluster-members (get-eb-clusters-nodes graph 10)]   ;decide on a number of nodes to remove ??
+  (let [deg-centralities (apply merge (get-node-degree-centralities graph))
+        betw-centralities (apply merge (get-node-betweenness-centralities graph))
+        ;clos-centralities (apply merge (get-node-closeness-centralities graph))
+        prank-centralities (apply merge (get-node-pagerank-centralities graph))
+        eb-cluster-members (apply merge (get-eb-clusters-nodes graph 1))]   ;decide on a number of nodes to remove ??
     (->> (map #(assoc {}
             :id (identity %)
             :in-degree (first (% deg-centralities))
             :out-degree (second (% deg-centralities))
             :betweenness (% betw-centralities)
-            :closeness (% clos-centralities)
+            ;:closeness (% clos-centralities)
             :pagerank (% prank-centralities)
             :in-cluster (% eb-cluster-members))
-         (ug/nodes graph))
-         (map #(assoc % :result (dtree/predict dtree/initialize-tree %)))
+              (ug/nodes graph))
+         (map #(assoc % :result (dtree/predict (dtree/build-tree dtree/data) %)))
          (map #(ug/add-attr graph (:id %) :result (:result %))))))
