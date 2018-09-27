@@ -1,4 +1,4 @@
-(ns conference-network.views.vega
+(ns conference-network.web.views.vega
   (:require [ubergraph.core :as g]
             [clojure.data.json :as json]))
 

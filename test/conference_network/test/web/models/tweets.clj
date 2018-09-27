@@ -1,5 +1,5 @@
-(ns conference-network.test.models.tweets
-  (:require [conference-network.models.tweets :as mtw]
+(ns conference-network.test.web.models.tweets
+  (:require [conference-network.web.models.tweets :as mtw]
             [java-time :as time])
   (:use [twitter.oauth]
         [twitter.callbacks]

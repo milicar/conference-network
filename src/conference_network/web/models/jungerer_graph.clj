@@ -1,4 +1,4 @@
-(ns conference-network.models.jungerer-graph
+(ns conference-network.web.models.jungerer-graph
   (:require [jungerer.graph :as jg]
             [jungerer.algo :as alg]
             [ubergraph.core :as ug])

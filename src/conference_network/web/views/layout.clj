@@ -1,4 +1,4 @@
-(ns conference-network.views.layout
+(ns conference-network.web.views.layout
   (:require [hiccup.page :refer [html5 include-css]]
             [noir.session :as session]))
 

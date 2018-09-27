@@ -1,8 +1,8 @@
-(ns conference-network.routes.validations
+(ns conference-network.web.routes.validations
   (:require [java-time :as time]
             [bouncer.core :as b]
             [bouncer.validators :as v]
-            [conference-network.models.db :as db]))
+            [conference-network.db.db :as db]))
 
 
 (defn valid-local-date?

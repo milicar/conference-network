@@ -1,5 +1,5 @@
-(ns conference-network.models.cross-validate
-  (:require [conference-network.models.decision-tree :as dtree]))
+(ns conference-network.ml.cross-validate
+  (:require [conference-network.ml.decision-tree :as dtree]))
 
 (defn divide-data
   "possibly returns 0 test rows, which produces /0 error

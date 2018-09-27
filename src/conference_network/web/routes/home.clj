@@ -1,11 +1,11 @@
-(ns conference-network.routes.home
+(ns conference-network.web.routes.home
   (:require [compojure.core :refer :all]
-            [conference-network.views.pages :as pages]
+            [conference-network.web.views.pages :as pages]
             [java-time :as time]
-            [conference-network.models.tweets :as tw]
-            [conference-network.routes.validations :as v]
-            [conference-network.models.db :as db]
-            [conference-network.models.graph :as g]
+            [conference-network.web.models.tweets :as tw]
+            [conference-network.web.routes.validations :as v]
+            [conference-network.db.db :as db]
+            [conference-network.web.models.graph :as g]
             [noir.session :as session]
             [noir.response :as resp]))
 

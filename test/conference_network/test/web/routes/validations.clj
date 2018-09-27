@@ -1,5 +1,5 @@
-(ns conference-network.test.routes.validations
-  (:require [conference-network.routes.validations :refer [validate-form-fields]]
+(ns conference-network.test.web.routes.validations
+  (:require [conference-network.web.routes.validations :refer [validate-form-fields]]
             [midje.sweet :refer :all]))
 
 

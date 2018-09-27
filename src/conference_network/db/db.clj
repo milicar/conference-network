@@ -1,4 +1,4 @@
-(ns conference-network.models.db
+(ns conference-network.db.db
   (:require [clojure.java.jdbc :as db]))
 
 (def mysql-db (read-string (slurp "db-config.txt")))

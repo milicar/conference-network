@@ -1,10 +1,10 @@
-(ns conference-network.views.pages
+(ns conference-network.web.views.pages
   (:require [hiccup.page :refer [html5]]
-            [conference-network.views.layout :as layout]
-            [conference-network.models.graph :as graph]
-            [conference-network.models.db :as db]
+            [conference-network.web.views.layout :as layout]
+            [conference-network.web.models.graph :as graph]
+            [conference-network.db.db :as db]
             [noir.session :as session]
-            [conference-network.views.vega :as vega]))
+            [conference-network.web.views.vega :as vega]))
 
 (defn home [params]
   (layout/common

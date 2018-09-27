@@ -1,4 +1,4 @@
-(ns conference-network.models.decision-tree)
+(ns conference-network.ml.decision-tree)
 
 
 

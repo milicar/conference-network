@@ -1,10 +1,10 @@
-(ns conference-network.models.tweets
+(ns conference-network.web.models.tweets
   (:use [twitter.oauth]
         [twitter.callbacks]
         [twitter.callbacks.handlers]
         [twitter.api.restful])
   (:require [java-time :as time]
-            [conference-network.models.graph :as graph]))
+            [conference-network.web.models.graph :as graph]))
 
 ; is it any better to have these written in some config file? when it's in text anyway..
 (def my-creds (make-oauth-creds "3sZ97SzxOsNLwnZgo23MWWbD2"

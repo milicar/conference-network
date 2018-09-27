@@ -1,8 +1,8 @@
-(ns conference-network.models.graph
+(ns conference-network.web.models.graph
   (:require [ubergraph.core :as ug]
             [loom.alg]
-            [conference-network.models.jungerer-graph :as jg]
-            [conference-network.models.decision-tree :as dtree]))
+            [conference-network.web.models.jungerer-graph :as jg]
+            [conference-network.ml.decision-tree :as dtree]))
 
 
 (defn add-nodes
