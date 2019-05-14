@@ -4,15 +4,19 @@
             [conference-network.web.models.jungerer-graph :as jg]
             [conference-network.ml.decision-tree :as dtree]))
 
+; main ns for functions dealing with graphs
+; some of the functions call conference-network.web.models.jungerer-graph ns
 
 (defn add-nodes
   [graph nodes-map]
   (ug/add-nodes-with-attrs* graph nodes-map))
 
-
+; This structure is the result of tweets/update-edges-mentions and tweets/update-edges-replies;
+; It has to be transformed here for ubergraph's function for adding edges
+; If this map structure has to be transformed elsewhere, it might be ok to refactor and change it in said fs
 (defn parse-edges
-  "parses edges for one source from format [:source {:dest1 weight1, :dest2 weight2}] to
-  [:source :dest1 {:weight 1}][:source :dest2 {:weight 2}]"
+  "parses edges for one source from format [:sourceID {:dest1ID weight1, :destID2 weight2}] to
+  [:sourceID :dest1ID {:weight 1}][:sourceID :dest2ID {:weight 2}]"
   [edges]
   (reduce #(conj %1 [(first edges) (first %2) {:weight (second %2)}]) [] (second edges)))
 
@@ -24,6 +28,8 @@
        (ug/add-directed-edges* graph)))
 
 (defn make-graph
+  "builds an ubergraph's directed graph structure
+  elements for graph are supplied by tweets-parsing functions in conference-network.web.models.tweets ns"
   [elements]
   (let [graph (ug/digraph)]
     (-> graph

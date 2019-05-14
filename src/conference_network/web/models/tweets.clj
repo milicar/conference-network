@@ -55,7 +55,7 @@
 
 
 (defn user-not-in-nodes
-  "helps readability; checks if user is not already in the nodes"
+  "helps code readability; checks if user is not already in the nodes"
   [user-key nodes]
   (nil? (user-key nodes)))
 
@@ -89,7 +89,10 @@
     (reduce #(add-user-node %2 %1) graph-elements mentions)
     graph-elements))
 
-
+; ? REFACTOR next two functions? structure has to be transformed for creating a graph later, but I prefer
+; this map structure instead of vectors.
+; To be clear, it's {:123 {:456 1, :789 1},...} instead of [[:123 :456 {:weight 1}][:123 :789 {:weight 1}]]
+; If function != models.graph/parse-edges is found, then refactor ok
 (defn update-edges-mentions
   "if there are mentions in status, for every mention add or update edge
   *this does not apply to users mentioning themselves, filter those first*
@@ -106,6 +109,7 @@
                               #(assoc %1 (keyword (:id_str %2)) 1) {} mentions)))
       graph-elements)))
 
+; see comment above
 (defn update-edges-replies
   "if a status is in reply to another user (but not a retweet of user's own tweet),
   add or update edge between two users
