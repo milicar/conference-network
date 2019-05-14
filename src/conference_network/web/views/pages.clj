@@ -93,6 +93,8 @@
            (str "Graph for search terms: " (:hashtags params)))]
     [:div#view]
     [:script (str "vegaEmbed('#view', " (vega/make-vega-spec (:graph tweets-and-graph)) ");")]
+    [:div#vegacredit
+     [:p "Visualization by " [:a {:href "https://vega.github.io/vega/"} "Vega"]]]
     [:form {:action "/predict" :method "POST"}
      [:input {:type "hidden" :name "predict" :value (graph/serialize-graph (:graph tweets-and-graph))}]
      [:input {:type "submit" :value "Predict"}]]

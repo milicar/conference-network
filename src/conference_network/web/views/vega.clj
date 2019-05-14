@@ -58,64 +58,84 @@
         node-radius 8
         node-charge -15
         link-distance 15]
-  {
-   :$schema  "https://vega.github.io/schema/vega/v4.json",
-   :autosize "none",
-   :width    width,
-   :height   height,
-   :padding  0,
+    {
+     :$schema  "https://vega.github.io/schema/vega/v4.json",
+     :autosize "none",
+     :width    width,
+     :height   height,
+     :padding  0,
 
-   :signals  [{:name "cx", :update "width / 2"}
-              {:name "cy", :update "height / 2"}
-              {:name "nodeRadius", :value node-radius}
-              {:name "nodeCharge", :value node-charge}
-              {:name "linkDistance", :value link-distance}
-              {:name "static", :value true}
-              {:description "State variable for active node fix status.",
-               :name        "fix",
-               :value       0,
-               :on          [{:events "symbol:mouseout[!event.buttons], window:mouseup", :update "0"}
-                             {:events "symbol:mouseover", :update "fix || 1"}
-                             {:events "[symbol:mousedown, window:mouseup] > window:mousemove!", :update "2", :force true}]}
-              {:description "Graph node most recently interacted with.",
-               :name        "node",
-               :value       nil,
-               :on          [{:events "symbol:mouseover", :update "fix === 1 ? item() : node"}]}
-              {:description "Flag to restart Force simulation upon data changes.",
-               :name        "restart",
-               :value       false,
-               :on          [{:events {:signal "fix"}, :update "fix > 1"}]}],
+     :signals  [{:name "cx", :update "width / 2"}
+                {:name "cy", :update "height / 2"}
+                {:name "nodeRadius", :value node-radius}
+                {:name "nodeCharge", :value node-charge}
+                {:name "linkDistance", :value link-distance}
+                {:name "static", :value true}
+                {:description "State variable for active node fix status.",
+                 :name        "fix",
+                 :value       0,
+                 :on          [{:events "symbol:mouseout[!event.buttons], window:mouseup", :update "0"}
+                               {:events "symbol:mouseover", :update "fix || 1"}
+                               {:events "[symbol:mousedown, window:mouseup] > window:mousemove!", :update "2", :force true}]}
+                {:description "Graph node most recently interacted with.",
+                 :name        "node",
+                 :value       nil,
+                 :on          [{:events "symbol:mouseover", :update "fix === 1 ? item() : node"}]}
+                {:description "Flag to restart Force simulation upon data changes.",
+                 :name        "restart",
+                 :value       false,
+                 :on          [{:events {:signal "fix"}, :update "fix > 1"}]}
+                {:description "Current node's data"
+                 :name        "hover",
+                 :value       nil,
+                 :on          [{:events "symbol:mouseover", :update "datum"},
+                               {:events "symbol:mouseout", :update "null"}]}
+                {:description "Current title (node's name)"
+                 :name        "title",
+                 :value       nil,
+                 :update      "hover ? hover.name : ''"}], ;can't make vega to deal with hover.screen-name,
+                                                           ; so those are not displayed
 
-   :scales   [{:name "color", :type "ordinal", :range {:scheme "category10"}}],
+     :scales   [{:name "color", :type "ordinal", :range {:scheme "category10"}}],
 
-   :marks    [{:name      "nodes",
-               :type      "symbol",
-               :zindex    1,
-               :from      {:data "node-data"},
-               :on        [{:trigger "fix", :modify "node", :values "fix === 1 ? {fx:node.x, fy:node.y} : {fx:x(), fy:y()}"}
-                           {:trigger "!fix", :modify "node", :values "{fx: null, fy: null}"}],
-               :encode    {:enter  {:fill {:scale "color", :field "group"}, :stroke {:value "white"}},
-                           :update {:size {:signal "2 * nodeRadius * nodeRadius"}, :cursor {:value "pointer"}}},
-               :transform [{:type       "force",
-                            :iterations 300,
-                            :restart    {:signal "restart"},
-                            :static     {:signal "static"},
-                            :forces     [{:force "center", :x {:signal "cx"}, :y {:signal "cy"}}
-                                         {:force "collide", :radius {:signal "nodeRadius"}}
-                                         {:force "nbody", :strength {:signal "nodeCharge"}}
-                                         {:force "link", :links "link-data", :distance {:signal "linkDistance"}}]}]}
-              {:type        "path",
-               :from        {:data "link-data"},
-               :interactive false,
-               :encode      {:update {:stroke {:value "black"}, :strokeWidth {:value 1}}},
-               :transform   [{:type    "linkpath",
-                              :shape   "line",
-                              :sourceX "datum.source.x",
-                              :sourceY "datum.source.y",
-                              :targetX "datum.target.x",
-                              :targetY "datum.target.y"}]}],
+     :marks    [{:name      "nodes",
+                 :type      "symbol",
+                 :zindex    1,
+                 :from      {:data "node-data"},
+                 :on        [{:trigger "fix", :modify "node", :values "fix === 1 ? {fx:node.x, fy:node.y} : {fx:x(), fy:y()}"}
+                             {:trigger "!fix", :modify "node", :values "{fx: null, fy: null}"}],
+                 :encode    {:enter  {:fill {:scale "color", :field "group"}, :stroke {:value "white"}},
+                             :update {:size {:signal "2 * nodeRadius * nodeRadius"}, :cursor {:value "pointer"}}},
+                 :transform [{:type       "force",
+                              :iterations 300,
+                              :restart    {:signal "restart"},
+                              :static     {:signal "static"},
+                              :forces     [{:force "center", :x {:signal "cx"}, :y {:signal "cy"}}
+                                           {:force "collide", :radius {:signal "nodeRadius"}}
+                                           {:force "nbody", :strength {:signal "nodeCharge"}}
+                                           {:force "link", :links "link-data", :distance {:signal "linkDistance"}}]}]}
+                {:type        "path",
+                 :from        {:data "link-data"},
+                 :interactive false,
+                 :encode      {:update {:stroke {:value "black"}, :strokeWidth {:value 1}}},
+                 :transform   [{:type    "linkpath",
+                                :shape   "line",
+                                :sourceX "datum.source.x",
+                                :sourceY "datum.source.y",
+                                :targetX "datum.target.x",
+                                :targetY "datum.target.y"}]}
+                {:type        "text",
+                 :interactive false,
+                 :encode      {:enter  {:x        {:signal "width", :offset -5},
+                                        :y        {:value 20},
+                                        :fill     {:value "black"},
+                                        :fontSize {:value 20},
+                                        :align    {:value "right"}
+                                        },
+                               :update {:text {:signal "title"}}
+                               }}],
 
-   :data vega-data}))
+     :data     vega-data}))
 
 (defn- write-json
   "makes json from clj data"

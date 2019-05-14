@@ -5,9 +5,9 @@
             [hiccup.middleware :refer [wrap-base-url]]
             [compojure.handler :as handler]
             [compojure.route :as route]
-            [conference-network.routes.home :refer [home-routes]]
-            [conference-network.views.pages :as p]
-            [conference-network.models.decision-tree :as dtree]
+            [conference-network.web.routes.home :refer [home-routes]]
+            [conference-network.web.views.pages :as p]
+            [conference-network.ml.decision-tree :as dtree]
             [noir.session :as session]))
 
 (defn init []
