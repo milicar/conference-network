@@ -14,35 +14,45 @@
                                 ))
 
 
+(defn respect-limit
+  "puts thread to sleep if twitter call limit is reached"
+  [limit-remaining limit-reset]
+  (if (= (Integer/parseInt limit-remaining) 0)
+    (let [reset_epoch_time (time/instant (* 1000 (Integer/parseInt limit-reset)))
+          reset_local_time (time/local-date-time reset_epoch_time (time/zone-id))
+          time_to_wait     (time/time-between reset_local_time (time/local-date-time) :seconds)]
+      (Thread/sleep (* 1000 time_to_wait)))))
+
 (defn get-tweets!
-  "calls Twitter API and downloads tweets for search criteria with paging
-  so far doesn't handle the case when rate limit is reached (limit = 180 calls in 15mins)
-  so far doesn't check if there are newer tweets (published since the search started)
+  "calls Twitter API and downloads tweets for search criteria with paging;
+  if rate limit is reached (limit = 180 calls in 15mins), function waits before recursive call,
+  but cannot check the limit for the first call. So, if it is called repeatedly with low counts,
+  it will exceed limit..
+  so far doesn't check if there are newer tweets (published since the search started);
   returns a collection of statuses"
   ([q-params]
-    (let [params (assoc q-params :count 100)
-          result (search-tweets :oauth-creds my-creds :params params)]
-      (if (= 100 (count (:statuses (:body result))))
-        (get-tweets! params result (:statuses (:body result)))
-        (:statuses (:body result)))))
-  ([params result statuses]
-   (let [limit-remaining (:x-rate-limit-remaining (:headers result))
-         limit-reset     (:x-rate-limit-reset (:headers result))
-         min_id          (dec (apply min (map :id (:statuses (:body result)))))
-         max_id          (:max_id (:search_metadata (:body result)))
-         new-params      (assoc params :max_id min_id)]
-     (if (> (java.lang.Integer/parseInt limit-remaining) 0)
-       (let [new-res      (search-tweets :oauth-creds my-creds :params new-params)
-             new-statuses (apply merge statuses (:statuses (:body new-res)))]
-         (if (= 100 (count (:statuses (:body new-res))))
-           (get-tweets! params new-res new-statuses)
-           new-statuses))))))
+   (let [params (assoc q-params :count 100 :include_entities 1)]
+     (get-tweets! params [])))
+  ([params statuses]
+   (let [new-res      (search-tweets :oauth-creds my-creds :params params)
+         new-statuses (:statuses (:body new-res))
+         all-statuses (apply merge statuses new-statuses)]
+     (if (= 100 (count new-statuses))                       ; if there's possibly more, check for limit & call again
+       (let [limit-remaining (:x-rate-limit-remaining (:headers new-res))
+             limit-reset     (:x-rate-limit-reset (:headers new-res))
+             min_id          (dec (apply min (map :id (:statuses (:body new-res)))))
+             max_id          (:max_id (:search_metadata (:body new-res)))
+             new-params      (assoc params :max_id min_id)]
+         (respect-limit limit-remaining limit-reset)
+         (get-tweets! new-params all-statuses))
+       all-statuses))))
+
 
 (defn interpret-twitter-datestring
   "interprets twitter's :created_at date format: \"Mon May 28 13:01:21 +0000 2018\"
   returns (only) date, usable by java-time/local-date"
   [datestring]
-  (let [d (clojure.string/split datestring #" ")
+  (let [d      (clojure.string/split datestring #" ")
         months {"Jan" "01", "Feb" "02", "Mar" "03", "Apr" "04", "May" "05", "Jun" "06",
                 "Jul" "07", "Aug" "08", "Sep" "09", "Oct" "10", "Nov" "11", "Dec" "12"}]
     (str (last d) "-" (get months (second d)) "-" (get d 2))))
@@ -131,7 +141,7 @@
   [graph-elements status]
   (let [user (:user status)]
     (->> graph-elements
-      (add-user-node user)         ;refactor at some point later
+         (add-user-node user)                               ;refactor at some point later
          (add-replied-to-node status)
          (add-mentioned-nodes status)
          (update-edges-mentions user status)
@@ -158,9 +168,9 @@
         start    (time/minus (time/local-date (:startdate form-params)) (time/days 1))
         response (get-tweets! {:q querystr :until end :content_type "recent"})]
     (assoc {} :tweets response :graph (-> response
-                                              (filter-by-timeframe start end)
-                                              (extract-graph-elements)
-                                              (graph/make-graph)))))
+                                          (filter-by-timeframe start end)
+                                          (extract-graph-elements)
+                                          (graph/make-graph)))))
 
 (defn num-one-status
   "updates tweets count based on one status
