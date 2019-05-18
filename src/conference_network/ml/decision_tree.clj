@@ -5,7 +5,8 @@
 (defn square [n]
   (* n n))
 
-(defn op
+(defn operator
+  "returns the appropriate operator for the type of data that is to be compared"
   [value]
   (if (not-any? #(instance? % value) [Long Double Float Integer Number])
     '=
@@ -17,8 +18,8 @@
   input: rows: list of maps, column: key, value: number or string
   output: map {true [rec1 rec2], false [rec3]}"
   [rows column value]
-  (let [op (op value)]
-     (group-by #((eval op) (column %) value) rows)))
+  (let [operator (operator value)]
+     (group-by #((eval operator) (column %) value) rows)))
 
 
 (defn unique-counts
@@ -44,7 +45,7 @@
          (- 1))))
 
 
-(defn column-value-combos
+(defn distinct-feature-values
   "finds all unique combinations of column - value (in matrix terms), which is
   actually implemented as key-value; used for finding best value to split the tree
   filters out :result column
@@ -52,31 +53,32 @@
   output: seq of distinct [:column value] combinations"
   [rows]
   (->> (reduce #(into %1 (seq %2)) #{} rows)
-       (filter #(not (= :result (key %))))))
+       (filter #(not (= :result (key %)))))) ;should removing result be in building tree fn?
 
 
 (defn find-best-split
   "applies all distinct splits and finds the one with max gains; associates additional information to
-  result for further computations & passing to other functions -> possibly an indication of a bad design
+  result for further computations & passing to other functions
   input: rows/observations, column-value combinations to split on, score function
-  output: a map: {true [rows] false [rows] :combo [:col value] :p x :gain y}"
+  output: a map: {true [rows] false [rows] :split-on [:col value] :p x :gain y}"
   [rows combos score-fn]
-  (let [row-count (count rows)
+  (let [row-count     (count rows)
         current-score (score-fn rows)
-        all-divisions (map #(assoc (divide-set rows (key %) (val %)) :combo %) combos)
-        multi-categoried (filter #(and (get % true) (get % false)) all-divisions)]
+        all-divisions (map #(assoc (divide-set rows (key %) (val %)) :split-on %) combos)
+        real-splits   (filter #(and (get % true) (get % false)) all-divisions)]
     ;^make all divisions and associate column-value combination to each
-    ;^ get only those that have mix of categories
-    (if (empty? multi-categoried)
-      (assoc {} :leaf rows :gain 0)                ;if data cannot be divided, gain is 0, make leaf
-      (->> (map #(assoc % :p (double (/ (count (get % true)) row-count))) multi-categoried) ; calculate p and assoc, for next step
-               (map #(assoc % :gain                                             ; assoc calculated gain for each
-                              (- current-score
-                                 (* (:p %) (score-fn (get % true)))             ;product of weighted p-s for both categories
-                                 (* (- 1 (:p %)) (score-fn (get % false))))))
-               (reduce #(if (> (:gain %1) (:gain %2))                   ; return record with max :gain
-                          %1
-                          %2) )))) )
+    ;^ get only those that truly split data into 'true' and 'false' subsets
+    (if (empty? real-splits)
+      (assoc {} :leaf rows :gain 0.0)                       ;if data cannot be divided by any value, gain is 0, make leaf
+      (->> (map #(assoc % :p (double (/ (count (get % true)) row-count))) real-splits) ; calculate p and assoc it, for next step
+           (map #(assoc % :gain                             ; assoc calculated gain for each
+                          (- current-score
+                             (* (:p %) (score-fn (get % true))) ;scores weighted by proportions of subsets
+                             (* (- 1 (:p %)) (score-fn (get % false))))))
+           (reduce #(if (> (:gain %1) (:gain %2))           ; return split with max :gain
+                      %1
+                      %2))
+           (#(dissoc % :p))))))
 ;
 ;(defn decision-node
 ;  "creates a decision node, constructor"
@@ -90,19 +92,29 @@
   "branch node; makes a map with data used for branching, and children
   input: output of find-best-split function
   output: map"
-  [data children]
-  {:column (key (:combo data)) :value (val (:combo data)) :children children})
+  [split-data children]
+  {:column (first (:split-on split-data))
+   :value (second (:split-on split-data))
+   :branch-true (first children)
+   :branch-false (second children)})
 
 (defn leaf
   "leaf node;
   input: empty dataset or split dataset
   3 cases: data has no rows - returns empty map
   data belongs to one category (marked by :leaf) - returns counts
-  data is mixed, but no division leads to gains - returns counts for all categories"
+  data is split, but no division leads to gains - returns counts for all categories"
   [data]
-  (if-let [counts (:leaf data)]
-    (into {} (unique-counts counts))
-    (into {} (unique-counts (apply conj (get data true) (get data false))))))
+  (if (or (= data {}) (= data [{}]) (= data []) (= data '()))
+    {}
+    (let [result-data (flatten (vals (dissoc data :gain :split-on)))]
+      (assoc {} :results (unique-counts result-data)))))
+
+
+(defn filter-out-empty-rows
+  [rows]
+  (filter not-empty (flatten rows)))
+
 
 (defn build-tree
   "builds a tree of maps
@@ -111,16 +123,16 @@
   ([rows]
    (build-tree rows gini-impurity))
   ([rows score-fn]
+   (let [rows (filter-out-empty-rows rows)]
     (if (= 0 (count rows))
       (leaf rows)
-      (let [col-val-combos (column-value-combos rows)      ;all the combos to check
+      (let [col-val-combos (distinct-feature-values rows)      ;all the combos to check
             best-split (find-best-split rows col-val-combos score-fn)]
-        (if (> (:gain best-split) 0 )
+        (if (> (:gain best-split) 0.0)
           (let [true-split (get best-split true)
                 false-split (get best-split false)]
             (branch best-split (map #(build-tree % gini-impurity) [true-split false-split])))
-          (leaf best-split))))))
-
+          (leaf best-split)))))))
 
 
 (defn predict
@@ -130,7 +142,7 @@
   [tree row]
   (if (:result tree)
     tree
-    (let [operator (op (:value tree))]
+    (let [operator (operator (:value tree))]
       (if ((eval operator) ((:column tree) row) (:value tree))
         (predict (first (:children tree)) row)
         (predict (second (:children tree)) row)))))
