@@ -145,7 +145,7 @@
                    score-after-true (* 0.5 (dtree/gini-impurity [{:f1 2 :result "B"}]))
                    score-after-false (* 0.5 (dtree/gini-impurity [{:f1 1 :result "A"}]))]
                (dtree/find-best-split rows feature-values score-fn) =>
-               (contains {:gain (- score-before-split score-after-false score-after-true) :split-on [:f1 2]}))
+               (contains {:gain 0.5 :split-on [:f1 2]}))
 
              (let [rows [{:f1 1 :result "A"}{:f1 2 :result "B"}{:f1 3 :result "C"}]
                    feature-values (dtree/distinct-feature-values rows)
@@ -154,7 +154,7 @@
                    score-after-true (* (double (/ 2 3)) (dtree/gini-impurity [{:f1 2 :result "B"}{:f1 3 :result "C"}]))
                    score-after-false (* (double (/ 1 3)) (dtree/gini-impurity [{:f1 1 :result "A"}]))]
                (dtree/find-best-split rows feature-values score-fn) =>
-               (contains {:gain (- score-before-split score-after-true score-after-false) :split-on [:f1 2]}))
+               (contains {:gain (roughly 0.3 0.1) :split-on [:f1 2]}))
 
              (let [rows [{:f1 1 :result "A"}{:f1 2 :result "B"}{:f1 3 :result "B"}]
                    feature-values (dtree/distinct-feature-values rows)
@@ -163,7 +163,7 @@
                    score-after-true (* (double (/ 2 3)) (dtree/gini-impurity [{:f1 2 :result "B"}{:f1 3 :result "B"}]))
                    score-after-false (* (double (/ 1 3)) (dtree/gini-impurity [{:f1 1 :result "A"}]))]
                (dtree/find-best-split rows feature-values score-fn) =>
-               (contains {:gain (- score-before-split score-after-true score-after-false) :split-on [:f1 2]})))
+               (contains {:gain (roughly 0.4 0.1) :split-on [:f1 2]})))
        (fact "in some cases, data can be split, but gain is 0"
              (let [rows [{:f1 1 :result "A"}{:f1 2 :result "A"}{:f1 1 :result "B"}{:f1 2 :result "B"}]
                    feature-values (dtree/distinct-feature-values rows)
@@ -223,6 +223,16 @@
               :branch-true {:column :f1 :value 3
                             :branch-true {:results '({:result "C" :count 1})}
                             :branch-false {:results '({:result "B" :count 1})}}
+              :branch-false {:results '({:result "A" :count 1})}}
+             (dtree/build-tree [{:f1 1 :result "A"}{:f1 2 :result "B"}{:f1 2 :result "C"}]) =>
+             {:column :f1 :value 2
+              :branch-true {:results '({:result "B" :count 1}{:result "C" :count 1})} ;order matters here, unfortunately
+              :branch-false {:results '({:result "A" :count 1})}})
+       (fact "if data can be split, but shouldn't because result labels are all the same"
+             (dtree/build-tree [{:f1 1 :f2 10 :result "A"}{:f1 2 :f2 20 :result "B"}
+                                {:f1 2 :f2 30 :result "B"}]) =>
+             {:column :f1 :value 2
+              :branch-true {:results '({:result "B" :count 2})}
               :branch-false {:results '({:result "A" :count 1})}}))
 
 
@@ -233,4 +243,76 @@
        (dtree/filter-out-empty-rows [{}]) => '()
        (dtree/filter-out-empty-rows [{}{}{}]) => '()
        (dtree/filter-out-empty-rows [{:k 1}{}{}{:k 2}]) => '({:k 1}{:k 2}))
+
+
+(facts "classify should return predicted class by default"
+       (fact "empty tree cannot classify anything"
+             (let [tree {}]
+               (dtree/classify tree {:f1 1}) => nil))
+
+       (fact "tree with only one leaf"
+             (let [tree {:results '({:result "A" :count 1})}]
+               (dtree/classify tree {:f1 1}) => "A")
+             (let [tree {:results '({:result "A" :count 1}{:result "B" :count 2})}]
+               (dtree/classify tree {:f1 1}) => "B"))
+
+       (fact "tree with branches with clear class on the leaf"
+             (let [tree {:column :f1 :value 2
+                         :branch-true {:results '({:result "yes" :count 1})}
+                         :branch-false {:results '({:result "no" :count 1})}}]
+               (dtree/classify tree {:f1 1}) => "no")
+             (let [tree {:column :f1 :value 2
+                         :branch-true {:column :f1 :value 3
+                                       :branch-true {:results '({:result "C" :count 1})}
+                                       :branch-false {:results '({:result "B" :count 1})}}
+                         :branch-false {:results '({:result "A" :count 1})}}]
+               (dtree/classify tree {:f1 1}) => "A"
+               (dtree/classify tree {:f1 2}) => "B")
+             (let [tree {:column :f1 :value 2
+                         :branch-true {:column :f1 :value 3
+                                       :branch-true {:results '({:result "C" :count 2}{:result "B" :count 1})}
+                                       :branch-false {:results '({:result "B" :count 1})}}
+                         :branch-false {:results '({:result "A" :count 1})}}]
+               (dtree/classify tree {:f1 3}) => "C"))
+
+       (fact "tree with a leaf where classes are equally probable predicts last in the considered seq"
+             (let [tree {:column :f1 :value 20
+                         :branch-true {:results '({:result "C" :count 2})}
+                         :branch-false {:results '({:result "A" :count 5}{:result "B" :count 5})}}]
+               (dtree/classify tree {:f1 10}) => "B")
+             (let [tree {:column :f1 :value 20
+                         :branch-true {:results '({:result "C" :count 2})}
+                         :branch-false {:results '({:result "B" :count 5}
+                                                    {:result "A" :count 5}
+                                                    {:result "D" :count 5})}}]
+               (dtree/classify tree {:f1 10}) => "D")))
+
+(facts "classify can return probability of predicted class, if asked"
+       (fact "empty tree cannot classify anything"
+             (let [tree {}]
+               (dtree/classify tree {:f1 1} true) => nil))
+       (fact "tree with only one leaf"
+             (let [tree {:results '({:result "A" :count 1})}]
+               (dtree/classify tree {:f1 1} true) => {:class "A" :probability 1.0})
+             (let [tree {:results '({:result "A" :count 1}{:result "B" :count 2})}]
+               (dtree/classify tree {:f1 1} true) => (contains {:class "B" :probability (roughly 0.6 0.1)})))
+       (fact "tree with branches with clear class on the leaf"
+             (let [tree {:column :f1 :value 2
+                         :branch-true {:results '({:result "yes" :count 1})}
+                         :branch-false {:results '({:result "no" :count 1})}}]
+               (dtree/classify tree {:f1 1} true) => {:class "no" :probability 1.0})
+             (let [tree {:column :f1 :value 2
+                         :branch-true {:column :f1 :value 3
+                                       :branch-true {:results '({:result "C" :count 1})}
+                                       :branch-false {:results '({:result "B" :count 1})}}
+                         :branch-false {:results '({:result "A" :count 1})}}]
+               (dtree/classify tree {:f1 1} true) => {:class "A" :probability 1.0}
+               (dtree/classify tree {:f1 2} true) => {:class "B" :probability 1.0})
+             (let [tree {:column :f1 :value 2
+                         :branch-true {:column :f1 :value 3
+                                       :branch-true {:results '({:result "C" :count 2}{:result "B" :count 1})}
+                                       :branch-false {:results '({:result "B" :count 1})}}
+                         :branch-false {:results '({:result "A" :count 1})}}]
+               (dtree/classify tree {:f1 3} true) => (contains {:class "C" :probability (roughly 0.6 0.1)}))))
+
 

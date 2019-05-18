@@ -135,17 +135,27 @@
           (leaf best-split)))))))
 
 
-(defn predict
-  "predicts class for one new observation; does not update the tree
-  input: tree, new observation
-  output: {:result res :count n}"
-  [tree row]
-  (if (:result tree)
-    tree
-    (let [operator (operator (:value tree))]
-      (if ((eval operator) ((:column tree) row) (:value tree))
-        (predict (first (:children tree)) row)
-        (predict (second (:children tree)) row)))))
+(defn classify
+  "predicts class for one new observation; class is determined by majority vote
+  input: tree, new observation, return probability with class?
+  output: either only class (string/number) or {:class c :probability p}"
+  ([tree row]
+   (classify tree row false))
+  ([tree row with-probability?]
+   (if (empty? tree)
+     nil
+     (if (:results tree)
+       (let [results        (:results tree)
+             best-guess (apply max-key :count results)
+             class          (:result best-guess)
+             total-counts   (apply + (reduce #(conj %1 (:count %2)) () results))
+             probability    (double (/ (:count best-guess) total-counts))
+             classification (assoc {} :class class :probability probability)]
+         (if with-probability? classification (:class classification)))
+       (let [operator (operator (:value tree))]
+         (if ((eval operator) ((:column tree) row) (:value tree))
+           (classify (:branch-true tree) row with-probability?)
+           (classify (:branch-false tree) row with-probability?)))))))
 
 ;
 ;(defn prune

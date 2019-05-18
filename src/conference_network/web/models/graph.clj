@@ -121,7 +121,7 @@
 
 
 (defn classify-graph-nodes
-  "for each node, gets all the variables, and then calls decision-tree/predict
+  "for each node, gets all the variables, and then calls decision-tree/classify
   input: ubergraph
   output: ubergraph"
   [graph]
@@ -139,5 +139,5 @@
             :pagerank (% prank-centralities)
             :in-cluster (% eb-cluster-members))
               (ug/nodes graph))
-         (map #(assoc % :result (dtree/predict (dtree/build-tree dtree/data) %)))
+         (map #(assoc % :result (dtree/classify (dtree/build-tree dtree/data) %)))
          (map #(ug/add-attr graph (:id %) :result (:result %))))))
