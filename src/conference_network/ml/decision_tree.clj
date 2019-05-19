@@ -157,27 +157,37 @@
            (classify (:branch-true tree) row with-probability?)
            (classify (:branch-false tree) row with-probability?)))))))
 
-;
-;(defn prune
-;  [tree mingain]
-;  (let [children (:children tree)]
-;    (when (contains? (first children) :column)
-;      (prune (first children) mingain))
-;    (when (contains? (second children) :column)
-;      (prune (second children) mingain))
-;    (when (and (contains? (first children) :result)
-;               (contains? (second children) :result))
-;      (let [true-br (first children)
-;            true-rows (repeat (:count true-br) true-br)
-;            false-br (second children)
-;            false-rows (repeat (:count false-br) false-br)
-;            all-rows (flatten (conj true-rows false-rows))
-;            delta (- (gini-impurity all-rows)            ;???
-;                     (/ (+ (gini-impurity true-rows)
-;                           (gini-impurity false-rows)) 2))]
-;        (when (< delta mingain)
-;          (unique-counts all-rows))))))
-      ; recreate the whole tree except this part.. ??
+
+
+(defn prune
+  "prunes the tree recursively, if gain from branching is less than min-gain
+   input: tree, minimum gain, score function
+   output: pruned tree"
+  [tree min-gain score-fn]
+  (if (contains? tree :results)
+    tree
+    (let [true-branch  (prune (:branch-true tree) min-gain score-fn)
+          false-branch (prune (:branch-false tree) min-gain score-fn)]
+      (if (and (contains? true-branch :results)
+               (contains? false-branch :results))
+        (if (should-be-pruned? true-branch false-branch min-gain score-fn)
+          (-> (dissoc tree :branch-true :branch-false)
+              (assoc :results
+                     (flatten (merge (:results true-branch) (:results false-branch)))))
+          tree)
+        tree))))
+
+
+(defn should-be-pruned?
+  [true-branch false-branch min-gain score-fn]
+  )
+
+
+    ;      delta      (- (gini-impurity all-rows)
+    ;                    (/ (+ (gini-impurity true-rows)
+    ;                          (gini-impurity false-rows)) 2))]
+    ;  (< delta mingain)
+
 
 
 

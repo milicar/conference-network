@@ -316,3 +316,56 @@
                (dtree/classify tree {:f1 3} true) => (contains {:class "C" :probability (roughly 0.6 0.1)}))))
 
 
+(facts "pruning wihout minimum gain constraint prunes the tree all the way to the root"
+       (fact "if tree is only root, nothing happens"
+             (dtree/prune {:results '({:result "a" :count 1})} anything anything) =>
+             {:results '({:result "a" :count 1})})
+       (fact "if tree has only one branching"
+             (let [tree {:column       :f1 :value 5
+                         :branch-true  {:results '({:result "yes" :count 1})}
+                         :branch-false {:results '({:result "no" :count 4})}}]
+               (dtree/prune tree anything anything) =>
+               (contains {:results '({:result "no" :count 4}{:result "yes" :count 1} )})))
+       (fact "larger trees, symmetrical branches"
+             (let [tree {:column       :f1 :value 5
+                         :branch-true  {:column       :f2 :value 1
+                                        :branch-true  {:results '({:result "yes" :count 1})}
+                                        :branch-false {:results '({:result "no" :count 4})}}
+                         :branch-false {:column       :f3 :value 456
+                                        :branch-true  {:results '({:result "no" :count 1})}
+                                        :branch-false {:results '({:result "maybe" :count 3})}}}]
+               (dtree/prune tree anything anything) =>
+               (contains {:results '({:result "maybe" :count 3}{:result "no" :count 1}
+                                      {:result "no" :count 4} {:result "yes" :count 1})}))
+             (let [tree {:column       :f1 :value 1
+                         :branch-true  {:column      :f2 :value 2
+                                        :branch-true {:column :f3 :value 3
+                                                      :branch-true {:results '({:result "yes" :count 1})}
+                                                      :branch-false {:results '({:result "perhaps" :count 4})}}
+                                        :branch-false {:column :f4 :value 4
+                                                       :branch-true {:results '({:result "sure" :count 2})}
+                                                       :branch-false {:results '({:result "who knows" :count 3})}}}
+                         :branch-false {:column :f5 :value 5
+                                        :branch-true {:results '({:result "no" :count 10})}
+                                        :branch-false {:results '({:result "maybe" :count 13})}}}]
+               (dtree/prune tree anything anything) =>
+               (contains {:results '({:result "maybe" :count 13}{:result "no" :count 10}
+                                      {:result "who knows" :count 3}{:result "sure" :count 2}
+                                      {:result "perhaps" :count 4}{:result "yes" :count 1})})))
+       (fact "asymmetrical branching is no problem"
+             (let [tree {:column       :f1 :value 1
+                         :branch-true  {:column      :f2 :value 2
+                                        :branch-true {:column :f3 :value 3
+                                                      :branch-true {:results '({:result "large" :count 100})}
+                                                      :branch-false {:results '({:result "small" :count 50})}}
+                                        :branch-false {:results '({:result "asymmetric" :count 1})}}
+                         :branch-false {:column :f4 :value 4
+                                        :branch-true {:results '({:result "medium" :count 78})}
+                                        :branch-false {:results '({:result "tiny" :count 3})}}}]
+               (dtree/prune tree anything anything) =>
+               (contains {:results '({:result "tiny" :count 3}{:result "medium" :count 78}
+                                      {:result "asymmetric" :count 1}{:result "small" :count 50}{:result "large" :count 100})})))
+
+       (against-background (dtree/should-be-pruned? anything anything anything anything) => true))
+
+
