@@ -35,11 +35,13 @@
   "calculates Gini impurity for a set of results - probability that
   a randomly placed item will be in the wrong category
   by formula: 1 - (sum (pi)^2)
-  input: rows (maps of observations)
+  input: rows (maps of observations) OR total-labels-count, each-label-counts (as from unique-counts)
   output: double"
-  [rows]
-  (let [total  (count rows)
+  ([rows]
+   (let [total  (count rows)
         counts (unique-counts rows)]
+     (gini-impurity total counts)))
+  ([total counts]
     (->> (map #(square (double (/ (:count %) total))) counts)
          (apply +)
          (- 1))))
@@ -158,6 +160,35 @@
            (classify (:branch-false tree) row with-probability?)))))))
 
 
+(defn merge-leaves-results
+  "merges leaves results and sums them if needed
+  input: sequences of results for two nodes: '({:result label :count n})
+  output sequence of results for merged node"
+  [true-node-results false-node-results]
+  (->> (flatten (merge true-node-results false-node-results))
+       (map #(assoc {} (:result %) (:count %)))
+       (apply merge-with +)
+       (map #(assoc {} :result (key %) :count (val %)))))
+
+
+(defn should-be-pruned?
+  "checks if information gain from branching is less than provided minimum; if so,
+  branches (really leaves) should be pruned
+  input: two nodes to be pruned potentially, minimum gain, score function
+  output: true/false"
+  [true-branch false-branch min-gain score-fn]
+  (let [true-results (:results true-branch)
+        false-results (:results false-branch)
+        parent-node (merge-leaves-results true-results false-results)
+        parent-total (apply + (map :count parent-node))
+        true-total (apply + (map :count true-results))
+        false-total (apply + (map :count false-results))
+        score-parent (score-fn parent-total parent-node)
+        score-true (score-fn true-total true-results)
+        score-false (score-fn false-total false-results)
+        gain (double (- score-parent (/ (+ score-true score-false) 2)))]
+    (< gain min-gain)))
+
 
 (defn prune
   "prunes the tree recursively, if gain from branching is less than min-gain
@@ -173,20 +204,9 @@
         (if (should-be-pruned? true-branch false-branch min-gain score-fn)
           (-> (dissoc tree :branch-true :branch-false)
               (assoc :results
-                     (flatten (merge (:results true-branch) (:results false-branch)))))
+                     (merge-leaves-results (:results true-branch) (:results false-branch))))
           tree)
         tree))))
-
-
-(defn should-be-pruned?
-  [true-branch false-branch min-gain score-fn]
-  )
-
-
-    ;      delta      (- (gini-impurity all-rows)
-    ;                    (/ (+ (gini-impurity true-rows)
-    ;                          (gini-impurity false-rows)) 2))]
-    ;  (< delta mingain)
 
 
 

@@ -316,7 +316,7 @@
                (dtree/classify tree {:f1 3} true) => (contains {:class "C" :probability (roughly 0.6 0.1)}))))
 
 
-(facts "pruning wihout minimum gain constraint prunes the tree all the way to the root"
+(facts "pruning without minimum gain constraint prunes the tree all the way to the root"
        (fact "if tree is only root, nothing happens"
              (dtree/prune {:results '({:result "a" :count 1})} anything anything) =>
              {:results '({:result "a" :count 1})})
@@ -335,8 +335,7 @@
                                         :branch-true  {:results '({:result "no" :count 1})}
                                         :branch-false {:results '({:result "maybe" :count 3})}}}]
                (dtree/prune tree anything anything) =>
-               (contains {:results '({:result "maybe" :count 3}{:result "no" :count 1}
-                                      {:result "no" :count 4} {:result "yes" :count 1})}))
+               (contains {:results '({:result "maybe" :count 3}{:result "no" :count 5}{:result "yes" :count 1})}))
              (let [tree {:column       :f1 :value 1
                          :branch-true  {:column      :f2 :value 2
                                         :branch-true {:column :f3 :value 3
@@ -369,3 +368,68 @@
        (against-background (dtree/should-be-pruned? anything anything anything anything) => true))
 
 
+(facts "pruning with maximum constraint returns the same tree without pruning"
+       (fact "tree is only root"
+             (dtree/prune {:results '({:result "a" :count 1})} anything anything) =>
+             {:results '({:result "a" :count 1})})
+       (fact "if tree has only one branching"
+             (let [tree {:column       :f1 :value 5
+                         :branch-true  {:results '({:result "yes" :count 1})}
+                         :branch-false {:results '({:result "no" :count 4})}}]
+               (dtree/prune tree anything anything) => tree))
+       (fact "larger trees, symmetrical branches"
+             (let [tree {:column       :f1 :value 5
+                         :branch-true  {:column       :f2 :value 1
+                                        :branch-true  {:results '({:result "yes" :count 1})}
+                                        :branch-false {:results '({:result "no" :count 4})}}
+                         :branch-false {:column       :f3 :value 456
+                                        :branch-true  {:results '({:result "no" :count 1})}
+                                        :branch-false {:results '({:result "maybe" :count 3})}}}]
+               (dtree/prune tree anything anything) => tree)
+             (let [tree {:column       :f1 :value 1
+                         :branch-true  {:column      :f2 :value 2
+                                        :branch-true {:column :f3 :value 3
+                                                      :branch-true {:results '({:result "yes" :count 1})}
+                                                      :branch-false {:results '({:result "perhaps" :count 4})}}
+                                        :branch-false {:column :f4 :value 4
+                                                       :branch-true {:results '({:result "sure" :count 2})}
+                                                       :branch-false {:results '({:result "who knows" :count 3})}}}
+                         :branch-false {:column :f5 :value 5
+                                        :branch-true {:results '({:result "no" :count 10})}
+                                        :branch-false {:results '({:result "maybe" :count 13})}}}]
+               (dtree/prune tree anything anything) => tree))
+       (fact "asymmetrical branching is no problem"
+             (let [tree {:column       :f1 :value 1
+                         :branch-true  {:column      :f2 :value 2
+                                        :branch-true {:column :f3 :value 3
+                                                      :branch-true {:results '({:result "large" :count 100})}
+                                                      :branch-false {:results '({:result "small" :count 50})}}
+                                        :branch-false {:results '({:result "asymmetric" :count 1})}}
+                         :branch-false {:column :f4 :value 4
+                                        :branch-true {:results '({:result "medium" :count 78})}
+                                        :branch-false {:results '({:result "tiny" :count 3})}}}]
+               (dtree/prune tree anything anything) => tree))
+
+       (against-background (dtree/should-be-pruned? anything anything anything anything) => false))
+
+
+
+(facts "merge-leaves-results merges leaves and sums counts if needed; called by prune"
+       (dtree/merge-leaves-results '({:result "no" :count 4}) '({:result "yes" :count 2})) =>
+       '({:result "yes" :count 2}{:result "no" :count 4})
+       (dtree/merge-leaves-results '({:result "no" :count 4}) '({:result "no" :count 2})) =>
+       '({:result "no" :count 6})
+       (dtree/merge-leaves-results '({:result "no" :count 4}{:result "yes" :count 7}) '({:result "yes" :count 2})) =>
+       '({:result "yes" :count 9}{:result "no" :count 4}))
+
+
+(facts "if the information gain of a split is less than provided minimum, leaves should be pruned"
+       (dtree/should-be-pruned? {:results '({:result "yes" :count 1})}
+                                {:results '({:result "no" :count 1})}
+                                0.51 dtree/gini-impurity) => true
+       (dtree/should-be-pruned? {:results '({:result "yes" :count 1})}
+                                {:results '({:result "no" :count 1})}
+                                0.50 dtree/gini-impurity) => false
+       (dtree/should-be-pruned? {:results '({:result "yes" :count 1})}
+                                {:results '({:result "no" :count 1})}
+                                0.49 dtree/gini-impurity) => false)
