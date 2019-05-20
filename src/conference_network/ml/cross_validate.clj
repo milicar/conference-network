@@ -1,16 +1,34 @@
 (ns conference-network.ml.cross-validate
   (:require [conference-network.ml.decision-tree :as dtree]))
 
+
+(defn deterministic-shuffle
+  "Return a random permutation of coll"
+  [^java.util.Collection coll seed]
+  (let [array-list (java.util.ArrayList. coll)
+        rand-generator (java.util.Random. seed)]
+    (java.util.Collections/shuffle array-list rand-generator)
+    (clojure.lang.RT/vector (.toArray array-list))))
+
+
 (defn divide-data
-  "possibly returns 0 test rows, which produces /0 error
-  it should be fixed here, and not subtract nil counts elsewhere in calculations
+  "takes random samples for test and validation datasets; uses deterministic shuffle,
+  for reproducibility (if seed is not provided, shuffle is randomised by random seed);
+  after shuffle, saves the order of data
+  !!possibly returns 0 test rows, which produces /0 error later
+  throws exception!!
   "
-  ([data]
-   (divide-data data 0.05))
-  ([data test-ratio]
-   (let [test-set (set (random-sample test-ratio (set data)))
-         train-set (clojure.set/difference (set data) test-set)]
-       {:test-set test-set :train-set train-set})))
+  ([data ratio]
+   (let [seed (* 1000 (rand))]
+     (divide-data data ratio seed)))
+  ([data ratio seed]
+   (let [shuffled-data (deterministic-shuffle data seed)
+         n (long (* ratio (count data)))
+         test-data (subvec shuffled-data 0 n)
+         train-data (subvec shuffled-data n)]
+     (if (< 0 (count test-data))
+       {:test-data test-data :train-data train-data}
+       (throw (Exception. "No data in test!"))))))
 
 
 (defn test-classifier
