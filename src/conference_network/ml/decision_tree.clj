@@ -81,13 +81,6 @@
                       %1
                       %2))
            (#(dissoc % :p))))))
-;
-;(defn decision-node
-;  "creates a decision node, constructor"
-;  [& args]
-;  (let [{:keys [column value result fbranch tbranch]
-;         :or {column -1 value nil result nil fbranch nil tbranch nil}} args]
-;    {:column column :value value :result result :fbranch fbranch :tbranch tbranch}))
 
 
 (defn branch

@@ -7,7 +7,7 @@
        (let [data (range 500)]
          (fact "providing ratio and seed"
                (cv/divide-data data 0.2 0) => (cv/divide-data data 0.2 0)
-               (cv/divide-data data 0.1 1) =not=> (cv/divide-data data 0.1 2) ))
+               (cv/divide-data data 0.1 1) =not=> (cv/divide-data data 0.1 2)))
        (let [data (vec (map #(assoc {} (keyword (str %)) %) (range 500)))]
          (fact "maps as data work as well"
                (cv/divide-data data 0.5 0) => (cv/divide-data data 0.5 0)
@@ -38,12 +38,32 @@
                 {:validation-data [7 8 9 10] :train-data [0 1 2 3 4 5 6]})))
 
 
-(facts "k-fold-cross-validation returns the average error of k evaluations of
-        the model"
+(facts "k-fold-cross-validation returns the average of metrics from k evaluations of
+        the model; the metric to be averaged has to be specified"
        (let [data (vec (range 50))]
-         (fact "evaluate is mocked to always return the same value, = average"
-           (cv/k-fold-cross-validation anything data 10) => 0.5))
-       (against-background (cv/evaluate anything anything) => 0.5))
+         (fact "evaluate is mocked to always return the same value per metric, = average"
+               (cv/k-fold-cross-validation anything data 10 :accuracy) => 0.5
+               (cv/k-fold-cross-validation anything data 10 :f1-score) => 0.75))
+       (against-background (cv/evaluate anything anything) => {:accuracy 0.5 :f1-score 0.75}))
 
 
+(facts "binary confusion matrix assumes class labels are encoded as 1 and 0"
+       (let [estimated-class '(1 0 1 1 0 0 0 1)
+             true-class      '(1 1 1 1 0 0 0 0)]
+         (cv/binary-confusion-matrix estimated-class true-class) =>
+         {:tp 3 :fp 1 :tn 3 :fn 1}))
+
+(facts "evaluate returns several metrics for the decision tree,
+        calculated on confusion matrix"
+       (let [tree             {:column       :f1 :value 2
+                               :branch-true  {:column       :f1 :value 3
+                                              :branch-true  {:results '({:result 0 :count 1})}
+                                              :branch-false {:results '({:result 1 :count 1})}}
+                               :branch-false {:results '({:result 0 :count 1})}}
+             data             '({:f1 1 :result 0} {:f1 2 :result 1} {:f1 5 :result 1} {:f1 1 :result 1})
+             estimated-class  '(0 1 0 0)
+             confusion-matrix {:tp 1 :fp 0 :tn 1 :fn 2}]
+         (cv/evaluate tree data) => (contains {:accuracy  0.5 :error 0.5
+                                               :precision 1.0 :recall (roughly 0.3 0.1)
+                                               :f1-score  (roughly 0.5 0.1)}))   )
 

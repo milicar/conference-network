@@ -30,8 +30,36 @@
        (throw (Exception. "No data in test!"))))))
 
 
+(defn binary-confusion-matrix
+  "makes a confusion matrix; assumes labels are 1 (positive) and 0 (negative)
+   input: sequence of estimated labels, sequence of true labels from dataset (only labels!)
+   output: map with confusion matrix elements"
+  [estimated-class true-class]
+  (let [true-positives  (apply + (map #(if (and (= 1 %1) (= 1 %2))
+                                         1 0) estimated-class true-class))
+        false-positives (apply + (map #(if (and (= 1 %1) (not (= 1 %2)))
+                                         1 0) estimated-class true-class))
+        true-negatives  (apply + (map #(if (and (not (= 1 %1)) (not (= 1 %2)))
+                                         1 0) estimated-class true-class))
+        false-negatives (apply + (map #(if (and (not (= 1 %1)) (= 1 %2))
+                                         1 0) estimated-class true-class))]
+    (assoc {} :tp true-positives :fp false-positives
+              :tn true-negatives :fn false-negatives)))
+
 (defn evaluate
-  [tree data])
+  [tree data]
+  (let [estimated-class (map #(dtree/classify tree %) data)
+        true-class      (map :result data)
+        count           (count estimated-class)
+        {:keys [tp fp tn fn]} (binary-confusion-matrix estimated-class true-class)
+        accuracy        (double (/ (+ tp tn) count))
+        error           (- 1 accuracy)
+        precision       (double (/ tp (+ tp fp)))
+        recall          (double (/ tp (+ tp fn)))
+        f1-score        (double (/ (* 2 precision recall) (+ precision recall)))]
+    (assoc {} :accuracy accuracy :error error :precision precision :recall recall
+              :f1-score f1-score)))
+
 
 
 (defn make-k-fold
@@ -50,17 +78,16 @@
               :train-data train-data)))
 
 (defn k-fold-cross-validation
-  "makes k iterations of train-evaluate process and returns the average error for the model
+  "makes k iterations of train-evaluate process and returns the average metric for the model
   input: classifier - function that wraps tree building with all the parameters except for data
-  data - vector of data rows; k - number f splits/iterations
-  output: average error over all splits"
-  [classifier data k]
+  data - vector of data rows; k - number f splits/iterations; metric - one of the metrics
+  provided by evaluate fn
+  output: average metric over all splits"
+  [classifier data k metric]
   (->> (for [i (range k)
-             :let [folds           (make-k-fold data k i)
-                   train-data      (:train-data folds)
-                   validation-data (:validation-data folds)
-                   tree            (classifier train-data)
-                   error           (evaluate tree validation-data)]]
-         error)
+             :let [{:keys [train-data validation-data]} (make-k-fold data k i)
+                   tree       (classifier train-data)
+                   avg-metric (metric (evaluate tree validation-data))]]
+         avg-metric)
        (apply +)
        (* (double (/ 1 k)))))
