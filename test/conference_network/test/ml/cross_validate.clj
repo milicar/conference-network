@@ -21,7 +21,29 @@
        ;        (cv/divide-data data 0.1) =throws=> (Exception.)))
        )
 
+(facts "make-k-fold makes one iteration of dividing dataset into validation
+        and train datasets; it is called by for [i (range k)]"
+       (fact "when split is clean, all folds are equal"
+             (for [i (range 3)]
+               (cv/make-k-fold (vec (range 12)) 3 i)) =>
+             '({:validation-data [0 1 2 3] :train-data [4 5 6 7 8 9 10 11]}
+                {:validation-data [4 5 6 7] :train-data [0 1 2 3 8 9 10 11]}
+                {:validation-data [8 9 10 11] :train-data [0 1 2 3 4 5 6 7]}))
+       (fact "when n is not a multiple of k, folds are not equal, but all data
+              points are accounted for"
+             (for [i (range 3)]
+               (cv/make-k-fold (vec (range 11)) 3 i)) =>
+             '({:validation-data [0 1 2] :train-data [3 4 5 6 7 8 9 10]}
+                {:validation-data [3 4 5 6] :train-data [0 1 2 7 8 9 10]}
+                {:validation-data [7 8 9 10] :train-data [0 1 2 3 4 5 6]})))
 
+
+(facts "k-fold-cross-validation returns the average error of k evaluations of
+        the model"
+       (let [data (vec (range 50))]
+         (fact "evaluate is mocked to always return the same value, = average"
+           (cv/k-fold-cross-validation anything data 10) => 0.5))
+       (against-background (cv/evaluate anything anything) => 0.5))
 
 
 

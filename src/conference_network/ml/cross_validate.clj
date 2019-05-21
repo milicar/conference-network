@@ -5,7 +5,7 @@
 (defn deterministic-shuffle
   "Return a random permutation of coll"
   [^java.util.Collection coll seed]
-  (let [array-list (java.util.ArrayList. coll)
+  (let [array-list     (java.util.ArrayList. coll)
         rand-generator (java.util.Random. seed)]
     (java.util.Collections/shuffle array-list rand-generator)
     (clojure.lang.RT/vector (.toArray array-list))))
@@ -16,42 +16,51 @@
   for reproducibility (if seed is not provided, shuffle is randomised by random seed);
   after shuffle, saves the order of data
   !!possibly returns 0 test rows, which produces /0 error later
-  throws exception!!
-  "
+  throws exception!!"
   ([data ratio]
    (let [seed (* 1000 (rand))]
      (divide-data data ratio seed)))
   ([data ratio seed]
    (let [shuffled-data (deterministic-shuffle data seed)
-         n (long (* ratio (count data)))
-         test-data (subvec shuffled-data 0 n)
-         train-data (subvec shuffled-data n)]
+         n             (long (* ratio (count data)))
+         test-data     (subvec shuffled-data 0 n)
+         train-data    (subvec shuffled-data n)]
      (if (< 0 (count test-data))
        {:test-data test-data :train-data train-data}
        (throw (Exception. "No data in test!"))))))
 
 
-(defn test-classifier
-  [classifier trainset testset]
-  (let [tree (dtree/build-tree trainset)] ;dear lord.. such coupled.. wow..
-    (->> (map #(if (= (:result %) (:result (classifier tree %)))
-            1 0) testset)
-         (apply +)
-         (#(/ % (count testset)))
-         (double))))
+(defn evaluate
+  [tree data])
 
 
-(defn cross-validate
-  ([classifier data]
-   (cross-validate classifier data 100 0.05))
-  ([classifier data trials test-ratio]
-   (->> (repeatedly trials
-               (fn []
-                 (let [datasets (divide-data data test-ratio)
-                       trainset (:train-set datasets)
-                       testset (:test-set datasets)]
-                   (test-classifier classifier trainset testset))))
-        (apply +)
-        (#(/ % trials))
-        (double))))
+(defn make-k-fold
+  "makes an i-th split into training and validation datasets
+  input data is assumed to be shuffled, and also separate from test subset;
+  k is total number of iterations/splits, i is the current one
+  output: {:validation-data [data] :train-data [data]}"
+  [data k i]
+  (let [n               (count data)
+        start-idx       (/ (* i n) k)
+        end-idx         (/ (* (inc i) n) k)
+        validation-data (subvec data start-idx end-idx)
+        train-data      (vec (concat (subvec data 0 start-idx)
+                                     (subvec data end-idx)))]
+    (assoc {} :validation-data validation-data
+              :train-data train-data)))
 
+(defn k-fold-cross-validation
+  "makes k iterations of train-evaluate process and returns the average error for the model
+  input: classifier - function that wraps tree building with all the parameters except for data
+  data - vector of data rows; k - number f splits/iterations
+  output: average error over all splits"
+  [classifier data k]
+  (->> (for [i (range k)
+             :let [folds           (make-k-fold data k i)
+                   train-data      (:train-data folds)
+                   validation-data (:validation-data folds)
+                   tree            (classifier train-data)
+                   error           (evaluate tree validation-data)]]
+         error)
+       (apply +)
+       (* (double (/ 1 k)))))
