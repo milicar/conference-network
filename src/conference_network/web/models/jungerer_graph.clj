@@ -7,7 +7,7 @@
 
 ;; it appears jungerer doesn't support edge weights or any other
 ;; attribute of the edges;
-;; saving a graph saves only edges, so isolates are lost in reloaded graph
+;; saving a jungerer graph saves only edges, so isolates are lost in reloaded graph!
 ;; but it has implementation of functions such as nodes centralities,
 ;; which are not implemented in ubergraph, so jungerer will be used for
 ;; those calculations
@@ -41,6 +41,7 @@
 
 (defn get-centralities
   "converts ubergraph to jungerer graph and finds centrality scores for each node
+  may return Nan, which is dealt with in feature-engineering ns
   input: ubergraph, kind of centrality
   output: sequence of maps {:node centrality-score}"
   [ubergraph kind]
@@ -48,9 +49,7 @@
         scorer ((kind centralities) jungraph)]
     (map (fn [node]
            (let [score (alg/score scorer node)]
-             (assoc {} node (if (= nil score)
-                              0
-                              score))))
+             (assoc {} node score)))
              (jungerer.graph/nodes jungraph))))
 
 

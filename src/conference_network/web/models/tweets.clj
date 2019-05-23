@@ -96,7 +96,9 @@
   "adds mentioned nodes; calls add-user-node for each mentioned user"
   [status graph-elements]
   (if-let [mentions (:user_mentions (:entities status))]
-    (reduce #(add-user-node %2 %1) graph-elements mentions)
+    (reduce #(if (not (nil? (:id_str %2)))
+               (add-user-node %2 %1)
+               graph-elements) graph-elements mentions)
     graph-elements))
 
 ; ? REFACTOR next two functions? structure has to be transformed for creating a graph later, but I prefer
@@ -111,12 +113,12 @@
   [user status graph-elements]
   (let [user-key            (keyword (:id_str user))
         unfiltered-mentions (:user_mentions (:entities status))
-        mentions            (filter #(not= (:id user) (:id %)) unfiltered-mentions)]
+        mentions            (filter #(and (not= (:id user) (:id %))
+                                          (not (nil? (:id_str %)))) unfiltered-mentions)]
     (if (not (empty? mentions))
-      (assoc-in graph-elements [:edges user-key]
-                (merge-with + (user-key (:edges graph-elements))
-                            (reduce
-                              #(assoc %1 (keyword (:id_str %2)) 1) {} mentions)))
+      (->> (reduce #(assoc %1 (keyword (:id_str %2)) 1) {} mentions)
+           (merge-with + (user-key (:edges graph-elements)))
+           (assoc-in graph-elements [:edges user-key]))
       graph-elements)))
 
 ; see comment above

@@ -46,7 +46,8 @@
 
 
 (defn get-node-degree-centralities
-  "returns map of node id, in-degree and out-degree"
+  "returns map of node id, in-degree and out-degree
+  as proportions of total number of nodes"
   [graph]
   (let [node-count (ug/count-nodes graph)]
     (map #(assoc {}
@@ -109,35 +110,43 @@
   "for each node in graph, assigns 1 if it belongs to a clique,
   0 otherwise;
   input: graph
-  output: map {:id id :in-clique x}"
+  output: map {:nodeID 0/1}"
   [graph]
   (let [all-cliques (->> (loom.alg/maximal-cliques graph)
                         (filter #(> (count %) 1)))
         all-nodes (apply clojure.set/union all-cliques)]
     (map #(assoc {}
-            :id (identity %)
-            :in-clique (if (contains? all-nodes (identity %)) 1 0))
+            (identity %)
+            (if (contains? all-nodes (identity %)) 1 0))
          (ug/nodes graph))))
 
 
-(defn classify-graph-nodes
-  "for each node, gets all the variables, and then calls decision-tree/classify
+(defn nodes-graph-metrics
+  "associates graph metrics to nodes, for feature engineering
   input: ubergraph
-  output: ubergraph"
+  output: map of nodes and metrics {:id :nodeID :in-degree indegree ...}"
   [graph]
   (let [deg-centralities (apply merge (get-node-degree-centralities graph))
         betw-centralities (apply merge (get-node-betweenness-centralities graph))
-        ;clos-centralities (apply merge (get-node-closeness-centralities graph))
+        clos-centralities (apply merge (get-node-closeness-centralities graph))
         prank-centralities (apply merge (get-node-pagerank-centralities graph))
-        eb-cluster-members (apply merge (get-eb-clusters-nodes graph 1))]   ;decide on a number of nodes to remove ??
-    (->> (map #(assoc {}
-            :id (identity %)
-            :in-degree (first (% deg-centralities))
-            :out-degree (second (% deg-centralities))
-            :betweenness (% betw-centralities)
-            ;:closeness (% clos-centralities)
-            :pagerank (% prank-centralities)
-            :in-cluster (% eb-cluster-members))
-              (ug/nodes graph))
-         (map #(assoc % :result (dtree/classify (dtree/build-tree dtree/data) %)))
-         (map #(ug/add-attr graph (:id %) :result (:result %))))))
+        weak-components-members (apply merge (get-weak-components-nodes graph))
+        clique-nodes (apply merge (clique-belonging-nodes graph))]
+    (map #(assoc {}
+                 :id (identity %)
+                 :in-degree (first (% deg-centralities))
+                 :out-degree (second (% deg-centralities))
+                 :betweenness (% betw-centralities)
+                 :closeness (% clos-centralities)
+                 :pagerank (% prank-centralities)
+                 :in-cluster (% weak-components-members)
+                 :in-cliques (% clique-nodes))
+              (ug/nodes graph))))
+
+
+
+
+
+(defn classify-graph-nodes
+  "move this somewhere..? "
+  )
