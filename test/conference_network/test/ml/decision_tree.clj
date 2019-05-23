@@ -114,12 +114,19 @@
                (dtree/divide-set rows :c1 "x") => {false [{:c1 "a" :c2 2 :c3 3}
                                                           {:c1 "b" :c2 22 :c3 33}
                                                           {:c1 "c" :c2 222 :c3 333}]}))
-       ;(fact "cannot deal with nils and NaNs.." ;but I also don't know how to test that..
+       ;(fact "cannot deal with nils and NaNs.. when testing with < >, for numbers"
+       ;but I also don't know how to test that..
        ;      (let [rows {:c1 1} {:c1 2} {:c1 nil}]
        ;        (dtree/divide-set rows :c1 2) => (NullPointerException.))
        ;      (let [rows [{:c1 (double NaN)} {:c2 0.2}]]
        ;        (dtree/divide-set rows :c1 0.2) => (NullPointerException.)))
-       )
+
+       (fact "can deal with nils when testing for equality, that is, with strings.."
+             (let [rows [{:c1 "a"} {:c1 nil} {:c1 "b"}]]
+               (dtree/divide-set rows :c1 "a") => {true [{:c1 "a"}]
+                                                   false [{:c1 nil}{:c1 "b"}]}
+               (dtree/divide-set rows :c1 nil) => {true [{:c1 nil}]
+                                                   false [{:c1 "a"}{:c1 "b"}]})))
 
 
 (facts "find-best-split"

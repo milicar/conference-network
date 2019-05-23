@@ -35,8 +35,38 @@
          (map fix-numtweets-nil))))
 
 
-;(defn rescale-features
-;  )
+(defn filter-out-nils
+  "for filtering out nils, if needed..
+  input: rows of observations
+  output: same"
+  [observations]
+  (filter (fn [row] (not (some nil? (vals row)))) observations))
+
+
+(defn rescale-feature
+  "rescales feature values, converting them into fractions; negative feature values are not scaled,
+   because that would diminish the significance of the encoding; nils, if any, are also left as they are
+   input: feature to rescale, observations
+   output: observations"
+  [feature observations]
+  (let [max (apply max (filter #(not (nil? %)) (map feature observations)))]
+    (map #(if (or (nil? (feature %)) (> 0 (feature %)))
+            %
+            (merge % {feature (double (/ (feature %) max))})) observations)))
+
+
+(defn round-feature
+  "rounds feature values to a specified number of decimal places, with default of 2
+  input: feature, observations, optionally number of decimal places
+  output: rows of observations"
+  ([feature observations]
+   (round-feature feature observations 2))
+  ([feature observations n-decimals]
+   (let [power (Math/pow 10 n-decimals)]
+     (map #(if (or (nil? (feature %)) (> 0 (feature %)))
+             %
+             (merge % {feature (double (/ (Math/round (* power (feature %))) power))}))
+          observations))))
 
 
 
