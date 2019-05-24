@@ -201,29 +201,3 @@
           tree)
         tree))))
 
-
-
-
-
-; SAMPLE DATA - from Programming Collective Intelligence
-(def data
-  [{:1 "slashdot" :2 "USA" :3 "yes" :4 18 :result "none"}
-  {:1 "google" :2 "France" :3 "yes" :4 23 :result "premium"}
-  {:1 "digg" :2 "USA" :3 "yes" :4 24 :result "basic"}
-  {:1 "kiwi" :2 "France" :3 "yes" :4 23 :result "basic"}
-  {:1 "google" :2 "UK" :3 "no" :4 21 :result "premium"}
-  {:1 "direct" :2 "New Zealand" :3 "no" :4 12 :result "none"}
-  {:1 "direct" :2 "UK" :3 "no" :4 21 :result "basic"}
-  {:1 "google" :2 "USA" :3 "no" :4 24 :result "premium"}
-  {:1 "slashdot" :2 "France" :3 "yes" :4 19 :result "none"}
-  {:1 "digg" :2 "USA" :3 "no" :4 18 :result "none"}
-  {:1 "google" :2 "UK" :3 "no" :4 18 :result "none"}
-  {:1 "kiwi" :2 "UK" :3 "no" :4 19 :result "none"}
-  {:1 "digg" :2 "New Zealand" :3 "yes" :4 12 :result "basic"}
-  {:1 "slashdot" :2 "UK" :3 "no" :4 21 :result "none"}
-  {:1 "google" :2 "UK" :3 "yes" :4 18 :result "basic"}
-  {:1 "kiwi" :2 "France" :3 "yes" :4 19 :result "basic"}])
-
-
-;(def initialize-tree (build-tree data))
-

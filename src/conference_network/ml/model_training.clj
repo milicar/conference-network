@@ -44,10 +44,10 @@ the limit. Also, 2018. tweets will be filtered by timeframe.")
 (comment "To get a sense of how many users will have the class positive, versus negative:")
 
 
-(let [swanners18 (map #(:id_str (:user %)) swan2018)
-      swanners19 (map #(:id_str (:user %)) swan2019)]
-  (do (println (map #(count (set %)) (list swanners18 swanners19)))
-      (print (count (clojure.set/intersection (set swanners18) (set swanners19))))))
+(let [swanners18 (set (map #(:id_str (:user %)) swan2018))
+      swanners19 (set (map #(:id_str (:user %)) swan2019))
+      class-positive(clojure.set/intersection swanners18 swanners19)]
+  (map count (list swanners18 swanners19 class-positive)))
 ; 159 165 - these are the users that actually tweeted; only 30 are the same for both years
 
 (comment "Classes will be rather unbalanced.")
@@ -126,4 +126,56 @@ evaluating it on test data:")
 
 (def tree (tree/build-tree train-val-swandata))
 (cv/evaluate tree test-data)
+; => {:accuracy 0.75, :error 0.25, :precision 0.5, :recall 1.0, :f1-score 0.6666666666666666}
+
+
+; evaluating the same tree on more data, by cross-validation
+(cv/k-fold-cross-validation (partial tree/build-tree) (vec train-val-swandata) 10 :f1-score)
+; 0.669949494949495
+(cv/k-fold-cross-validation (partial tree/build-tree) (vec train-val-swandata) 10 :precision)
+; 0.7133333333333334
+
+
+(= tree (tree/prune tree 0.5 tree/gini-impurity))
+(= tree (tree/prune tree 0.6 tree/gini-impurity))
+
+
+;(map
+;  (fn [mingain]
+;    (cv/k-fold-cross-validation (tree/prune (partial tree/build-tree) mingain tree/gini-impurity) (vec train-val-swandata) 5 :precision))
+;  (range 0.2 1.0 0.1))
+
+(map #(tree/prune tree % tree/gini-impurity) (range 0.0 1. 0.1))
+
+
+
+
+
+
+
+(comment "Applying the same feature engineering on live data")
+
+
+(def raw-featurizer (comp fe/filter-out-nils fe/deal-with-nils-and-nans fe/get-raw-features))
+(def rescaler (comp (partial fe/rescale-feature :betweenness) (partial fe/rescale-feature :num-tweets)))
+(def rounder (comp #(fe/round-feature :num-tweets % 3) #(fe/round-feature :pagerank % 3)
+                   #(fe/round-feature :closeness % 3) #(fe/round-feature :betweenness % 3)
+                   #(fe/round-feature :out-degree % 3) #(fe/round-feature :in-degree % 3)))
+
+
+(defn extract-features
+  [graph tweets]
+  (rounder (rescaler (raw-featurizer graph tweets))))
+
+
+(defn live-predict
+  "gets graph and tweets from a page (request)
+  input: map with graph and tweets {:graph g :tweets tw}
+  output: graph with nodes marked with class"
+  [{:keys [graph tweets]}]
+  (let [data-ready (extract-features graph tweets)
+        results (map #(tree/classify tree %) data-ready)
+        new-graph graph ;add nodes attributes!
+        ]
+    (assoc {} :graph new-graph :results results)))
 

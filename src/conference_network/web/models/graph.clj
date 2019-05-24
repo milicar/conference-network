@@ -149,4 +149,4 @@
 
 (defn classify-graph-nodes
   "move this somewhere..? "
-  )
+  [graph])

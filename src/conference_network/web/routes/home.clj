@@ -6,6 +6,7 @@
             [conference-network.web.routes.validations :as v]
             [conference-network.db.db :as db]
             [conference-network.web.models.graph :as g]
+            [conference-network.ml.model-training :as model]
             [noir.session :as session]
             [noir.response :as resp]))
 
@@ -79,7 +80,7 @@
   (my-graphs request))
 
 (defn predict
-  "predicts which nodes will not communicate post event"
+  "predicts which nodes will not return next year"
   [{:keys [params] :as request}]
   (pages/visualize (assoc request :graph
                              (g/classify-graph-nodes (g/deserialize-graph(:predict params))))))
