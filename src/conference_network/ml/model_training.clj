@@ -121,34 +121,54 @@ boosting with cost-sensitive weighting.")
 (def train-val-swandata (map #(dissoc % :id) train-val-data))
 
 
-(comment "Fitting the model without choosing any parameters, without cross-validation, and
-evaluating it on test data:")
+(comment "BASIC TREE MODEL:
+Fitting the model without choosing any parameters, without cross-validation, and evaluating it
+on test data:")
 
 (def tree (tree/build-tree train-val-swandata))
 (cv/evaluate tree test-data)
 ; => {:accuracy 0.75, :error 0.25, :precision 0.5, :recall 1.0, :f1-score 0.6666666666666666}
 
 
-; evaluating the same tree on more data, by cross-validation
-(cv/k-fold-cross-validation (partial tree/build-tree) (vec train-val-swandata) 10 :f1-score)
+; evaluating the same classifier on more data, by cross-validation
+(cv/k-fold-cross-validation (partial tree/build-tree) train-val-swandata 10 :f1-score)
 ; 0.669949494949495
-(cv/k-fold-cross-validation (partial tree/build-tree) (vec train-val-swandata) 10 :precision)
+(cv/k-fold-cross-validation (partial tree/build-tree)  train-val-swandata 10 :precision)
 ; 0.7133333333333334
 
 
-(= tree (tree/prune tree 0.5 tree/gini-impurity))
-(= tree (tree/prune tree 0.6 tree/gini-impurity))
+(comment "PRUNED TREE CLASSIFIER:
+Choosing the tree with the best metrics, out of trees pruned with different minimum gain
+parameter, using 10-fold cross-validation")
 
 
-;(map
-;  (fn [mingain]
-;    (cv/k-fold-cross-validation (tree/prune (partial tree/build-tree) mingain tree/gini-impurity) (vec train-val-swandata) 5 :precision))
-;  (range 0.2 1.0 0.1))
+(defn tree-pruning-classifier
+  "returns a pruned tree classifier, for supplied minimum gain and data; hardcodes
+  gini-impurity score function for now
+  input: minimum gain (0.0-1.0)
+  output: pruned tree classifier"
+  [mingain data]
+  (let [tree        (tree/build-tree data)
+        pruned-tree (tree/prune tree mingain tree/gini-impurity)]
+    pruned-tree))
 
-(map #(tree/prune tree % tree/gini-impurity) (range 0.0 1. 0.1))
+
+(let [classifiers (map #(partial tree-pruning-classifier %) (range 0.0 1.0 0.1))
+      scores  (map #(cv/k-fold-cross-validation % (vec train-val-swandata) 10 :f1-score) classifiers)
+      output (into (sorted-map) (zipmap (range 0.0 1.0 0.1) scores))]
+  output)
 
 
 
+(comment "So far, the pruned tree with 0.4 as minimum gain seems to have the best results.
+Comparing its performance on test data with basic tree with no pruning, the two are the same.
+In the case of same predictive power, the simpler model should be used. Here it is (potentially)
+the pruned one.")
+
+(cv/evaluate (tree-pruning-classifier 0.4 train-val-swandata) test-data)
+; {:accuracy 0.75, :error 0.25, :precision 0.5, :recall 1.0, :f1-score 0.6666666666666666}
+
+(def final-tree (tree-pruning-classifier 0.4 train-val-swandata))
 
 
 

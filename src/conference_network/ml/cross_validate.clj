@@ -15,8 +15,9 @@
   "takes random samples for test and validation datasets; uses deterministic shuffle,
   for reproducibility (if seed is not provided, shuffle is randomised by random seed);
   after shuffle, saves the order of data
-  !!possibly returns 0 test rows, which produces /0 error later
-  throws exception!!"
+  !!throws exception if there are no data in either subset!!
+  input: observations in coll or seq
+  output: {:train-data [observations] :test-data [observations]}"
   ([data ratio]
    (let [seed (* 1000 (rand))]
      (divide-data data ratio seed)))
@@ -25,9 +26,9 @@
          n             (long (* ratio (count data)))
          test-data     (subvec shuffled-data 0 n)
          train-data    (subvec shuffled-data n)]
-     (if (< 0 (count test-data))
+     (if (and (< 0 (count test-data)) (< 0 (count train-data)))
        {:test-data test-data :train-data train-data}
-       (throw (Exception. "No data in test!"))))))
+       (throw (Exception. "No data in test or train subset!"))))))
 
 
 (defn binary-confusion-matrix
@@ -47,6 +48,11 @@
               :tn true-negatives :fn false-negatives)))
 
 (defn evaluate
+  "calculates several model performance metrics; if only negative class is predicted,
+  precision, recall and f1-score have the risk of dividing by zero, and in that case,
+  they return 0.0, as those are positive class measures
+  input: tree, coll or seq of observations
+  output: map of metrics"
   [tree data]
   (let [estimated-class (map #(dtree/classify tree %) data)
         true-class      (map :result data)
@@ -54,10 +60,12 @@
         {:keys [tp fp tn fn]} (binary-confusion-matrix estimated-class true-class)
         accuracy        (double (/ (+ tp tn) count))
         error           (- 1 accuracy)
-        precision       (double (/ tp (+ tp fp)))
-        recall          (double (/ tp (+ tp fn)))
-        f1-score        (double (/ (* 2 precision recall) (+ precision recall)))]
-    (assoc {} :accuracy accuracy :error error :precision precision :recall recall
+        precision       (if (or (< 0 tp) (< 0 fp)) (double (/ tp (+ tp fp))) 0.0)
+        recall          (if (or (< 0 tp) (< 0 fn)) (double (/ tp (+ tp fn))) 0.0)
+        f1-score        (if (or (< 0 precision) (< 0 recall))
+                          (double (/ (* 2 precision recall) (+ precision recall))) 0.0)]
+    (assoc {} :accuracy accuracy :error error
+              :precision precision :recall recall
               :f1-score f1-score)))
 
 
@@ -80,12 +88,12 @@
 (defn k-fold-cross-validation
   "makes k iterations of train-evaluate process and returns the average metric for the model
   input: classifier - function that wraps tree building with all the parameters except for data
-  data - vector of data rows; k - number f splits/iterations; metric - one of the metrics
+  data - coll or seq of data rows; k - number f splits/iterations; metric - one of the metrics
   provided by evaluate fn
   output: average metric over all splits"
   [classifier data k metric]
   (->> (for [i (range k)
-             :let [{:keys [train-data validation-data]} (make-k-fold data k i)
+             :let [{:keys [train-data validation-data]} (make-k-fold (vec data) k i)
                    tree       (classifier train-data)
                    avg-metric (metric (evaluate tree validation-data))]]
          avg-metric)
