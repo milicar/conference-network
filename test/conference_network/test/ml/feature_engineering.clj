@@ -105,7 +105,11 @@
              (let [feature :betweenness
                    rows '({:betweenness 912.13}{:betweenness -1.0}{:betweenness -2.0}{:betweenness 352.0})]
                (fe/rescale-feature feature rows) => '({:betweenness 1.0}{:betweenness -1.0}{:betweenness -2.0}
-                                                       {:betweenness 0.3859099031936237}))))
+                                                       {:betweenness 0.3859099031936237})))
+       (fact "if all the values for the feature are 0, then it should just return 0s"
+             (let [feature :num-tweets
+                   rows '({:num-tweets 0}{:num-tweets 0}{:num-tweets 0})]
+               (fe/rescale-feature feature rows) => '({:num-tweets 0}{:num-tweets 0}{:num-tweets 0}))))
 
 
 (facts "round-feature rounds feature values, once they are fractions"

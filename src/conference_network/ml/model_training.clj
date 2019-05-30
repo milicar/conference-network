@@ -20,6 +20,12 @@ saved as .txt files.")
 (def filenames19 '( "traintweets/swan19-01.txt" "traintweets/swan19-02.txt" "traintweets/swan19-03.txt"
                     "traintweets/swan19-04.txt" "traintweets/swan19-05.txt" "traintweets/swan19-06.txt"))
 
+(def wiefiles18 '("traintweets/wie18-01.txt","traintweets/wie18-02.txt","traintweets/wie18-03.txt",
+                   "traintweets/wie18-04.txt","traintweets/wie18-05.txt","traintweets/wie18-06.txt",
+                   "traintweets/wie18-07.txt"))
+(def wiefiles19 '("traintweets/wie19-01.txt","traintweets/wie19-02.txt","traintweets/wie19-03.txt",
+                   "traintweets/wie19-04.txt","traintweets/wie19-05.txt","traintweets/wie19-06.txt"))
+
 (defn txt-to-json
   [filename]
   (json/read-str (slurp filename) :key-fn keyword))
@@ -27,6 +33,9 @@ saved as .txt files.")
 
 (def swan2018 (flatten (merge (map #(:results (txt-to-json %)) filenames18))))
 (def swan2019 (flatten (merge (map #(:results (txt-to-json %)) filenames19))))
+(def wie2018 (flatten (merge (map #(:results (txt-to-json %)) wiefiles18))))
+(def wie2019 (flatten (merge (map #(:results (txt-to-json %)) wiefiles19))))
+
 
 
 (comment "By mistake, in search parameters for 2019. tweets, toDate was not set, so tweets need to be
@@ -41,14 +50,26 @@ the limit. Also, 2018. tweets will be filtered by timeframe.")
                                           (java-time/local-date-time 2019 05 14 00)
                                           (java-time/local-date-time 2019 05 18 00)))
 
+(def wie2018 (tweets/filter-by-timeframe wie2018 (java-time/local-date-time 2018 05 20 00)
+                                         (java-time/local-date-time 2018 05 24 00)))
+
+(def wie2019 (tweets/filter-by-timeframe wie2019 (java-time/local-date-time 2019 05 22 00)
+                                         (java-time/local-date-time 2019 05 26 00)))
+
 (comment "To get a sense of how many users will have the class positive, versus negative:")
 
 
 (let [swanners18 (set (map #(:id_str (:user %)) swan2018))
       swanners19 (set (map #(:id_str (:user %)) swan2019))
-      class-positive(clojure.set/intersection swanners18 swanners19)]
+      class-positive (clojure.set/intersection swanners18 swanners19)]
   (map count (list swanners18 swanners19 class-positive)))
 ; 159 165 - these are the users that actually tweeted; only 30 are the same for both years
+
+(let [wiers18 (set (map #(:id_str (:user %)) wie2018))
+      wiers19 (set (map #(:id_str (:user %)) wie2019))
+      class-positive (clojure.set/intersection wiers18 wiers19)]
+  (map count (list wiers18 wiers19 class-positive)))
+; 176 108 17!!
 
 (comment "Classes will be rather unbalanced.")
 
@@ -60,14 +81,29 @@ feature values (because each distinct value is checked as a boundary)")
   (def swandata (-> (fe/get-raw-features swan2018graph swan2018)
                     (fe/deal-with-nils-and-nans))))
 
+(let [wie2018graph (graph/make-graph (tweets/extract-graph-elements wie2018))]
+  (def wiedata (-> (fe/get-raw-features wie2018graph wie2018)
+                    (fe/deal-with-nils-and-nans))))
+
 (count (fe/filter-out-nils swandata)) ;there are no other, unexpected nils
 ; here there are 188 users, because some of them were only mentioned or replied to,
 ; but didn't tweet themselves
+(count (fe/filter-out-nils wiedata)) ;same here
 
 (def swandata (->> (fe/rescale-feature :num-tweets swandata)
                    (fe/rescale-feature :betweenness)))
 
 (def swandata (->> (fe/round-feature :in-degree swandata 3)
+                   (#(fe/round-feature :out-degree % 3))
+                   (#(fe/round-feature :betweenness % 3))
+                   (#(fe/round-feature :closeness % 3))
+                   (#(fe/round-feature :pagerank % 3))
+                   (#(fe/round-feature :num-tweets % 3))))
+
+(def wiedata (->> (fe/rescale-feature :num-tweets wiedata)
+                   (fe/rescale-feature :betweenness)))
+
+(def wiedata (->> (fe/round-feature :in-degree wiedata 3)
                    (#(fe/round-feature :out-degree % 3))
                    (#(fe/round-feature :betweenness % 3))
                    (#(fe/round-feature :closeness % 3))
@@ -85,9 +121,18 @@ feature values (because each distinct value is checked as a boundary)")
 ; participants of the graph for the 2018 data, the same must be done for 2019 data. Maybe treating
 ; mentioned participants (eg. Microsoft, Cisco..) should be reconsidered.. another time..
 
+(def wieresult (clojure.set/union (set (map #(keyword (:id_str (:user %))) wie2019))
+                               (set (map #(keyword (:in_reply_to_user_id_str %)) wie2019))
+                               (set (->> (flatten (map #(:user_mentions (:entities %)) wie2019))
+                                         (map #(keyword (:id_str %)))))))
+
 (def swandata (map #(assoc % :result (if (contains? result (:id %))
                                        1
                                        0)) swandata))
+
+(def wiedata (map #(assoc % :result (if (contains? wieresult (:id %))
+                                       1
+                                       0)) wiedata))
 
 
 (comment "The same feature engineering has to be done when classifying new observations.")
@@ -96,6 +141,10 @@ feature values (because each distinct value is checked as a boundary)")
 
 (count (filter #(= (:result %) 0) swandata)) ;148
 (count (filter #(= (:result %) 1) swandata)) ;40
+
+(count (filter #(= (:result %) 0) wiedata)) ;197
+(count (filter #(= (:result %) 1) wiedata)) ;24
+
 
 (comment "The simplest way to deal with this is to undersample the larger class. Here, only random
 sampling will be used. More advanced sampling would include informed undersampling and synthetic
@@ -109,8 +158,16 @@ boosting with cost-sensitive weighting.")
       undersampled-zeros (:test-data (cv/divide-data zeros percent 2019))] ;divide-data shuffles data
     (def rebalanced-swandata (concat undersampled-zeros ones)))       ;with seed, asked % is assigned to :test
 
+(let [zeros (filter #(= (:result %) 0) wiedata)
+      ones (filter #(= (:result %) 1) wiedata)
+      percent (double (/ (count ones) (count zeros)))
+      undersampled-zeros (:test-data (cv/divide-data zeros percent 2019))]
+  (def rebalanced-wiedata (concat undersampled-zeros ones)))
 
-(let [divided-data (cv/divide-data rebalanced-swandata 0.1 2019)]
+; merging datasets from two conferences now:
+
+(let [all-confs-data (concat rebalanced-wiedata rebalanced-swandata)
+      divided-data (cv/divide-data all-confs-data 0.1 2019)]
       (def test-data (:test-data divided-data))
       (def train-val-data (:train-data divided-data)))
 
@@ -118,23 +175,24 @@ boosting with cost-sensitive weighting.")
 (comment "Before training the model, id column should be removed, since it is not a feature")
 
 (def train-userIDs (map :id train-val-data))
-(def train-val-swandata (map #(dissoc % :id) train-val-data))
+(def train-val-data (map #(dissoc % :id) train-val-data))
 
 
 (comment "BASIC TREE MODEL:
 Fitting the model without choosing any parameters, without cross-validation, and evaluating it
 on test data:")
 
-(def tree (tree/build-tree train-val-swandata))
+(def tree (tree/build-tree train-val-data))
 (cv/evaluate tree test-data)
 ; => {:accuracy 0.75, :error 0.25, :precision 0.5, :recall 1.0, :f1-score 0.6666666666666666}
-
+;=> {:accuracy 0.5833333333333333, :error 0.41666666666666674, :precision 0.8, :recall 0.5, :f1-score 0.6153846153846154}
+; including more data made classifying a bit worse..
 
 ; evaluating the same classifier on more data, by cross-validation
-(cv/k-fold-cross-validation (partial tree/build-tree) train-val-swandata 10 :f1-score)
-; 0.669949494949495
-(cv/k-fold-cross-validation (partial tree/build-tree)  train-val-swandata 10 :precision)
-; 0.7133333333333334
+(cv/k-fold-cross-validation (partial tree/build-tree) train-val-data 10 :f1-score)
+; 0.669949494949495 ; 0.5304001554001555 with added data
+(cv/k-fold-cross-validation (partial tree/build-tree)  train-val-data 10 :precision)
+; 0.7133333333333334 ; 0.527142857142857 with added data
 
 
 (comment "PRUNED TREE CLASSIFIER:
@@ -153,22 +211,24 @@ parameter, using 10-fold cross-validation")
     pruned-tree))
 
 
-(let [mingains (range 0.3 0.6 0.05)
+(let [mingains (range 0.1 1.0 0.05)
       classifiers (map #(partial tree-pruning-classifier %) mingains)
-      scores  (map #(cv/k-fold-cross-validation % train-val-swandata 10 :f1-score) classifiers)
+      scores  (map #(cv/k-fold-cross-validation % train-val-data 10 :f1-score) classifiers)
       output (into (sorted-map) (zipmap mingains scores))]
   output)
 
-
+; with added data it's all the same up to mingain of 0.5, and then again all the same
+; (very low score) up to mingain of 1.0 ???
 (comment "So far, the pruned tree with 0.4 as minimum gain seems to have the best results.
 Comparing its performance on test data with basic tree with no pruning, the two are the same.
 In the case of same predictive power, the simpler model should be used. Here it is (potentially)
 the pruned one.")
 
-(cv/evaluate (tree-pruning-classifier 0.4 train-val-swandata) test-data)
+(cv/evaluate (tree-pruning-classifier 0.4 train-val-data) test-data)
 ; {:accuracy 0.75, :error 0.25, :precision 0.5, :recall 1.0, :f1-score 0.6666666666666666}
+; {:accuracy 0.5833333333333333, :error 0.41666666666666674, :precision 0.8, :recall 0.5, :f1-score 0.6153846153846154}
 
-(def final-tree (tree-pruning-classifier 0.4 train-val-swandata))
+(def final-tree (tree-pruning-classifier 0.4 train-val-data))
 
 
 

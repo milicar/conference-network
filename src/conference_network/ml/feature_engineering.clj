@@ -50,7 +50,7 @@
    output: observations"
   [feature observations]
   (let [max (apply max (filter #(not (nil? %)) (map feature observations)))]
-    (map #(if (or (nil? (feature %)) (> 0 (feature %)))
+    (map #(if (or (nil? (feature %)) (> 0 (feature %)) (= 0.0  (double max)))
             %
             (merge % {feature (double (/ (feature %) max))})) observations)))
 
