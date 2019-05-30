@@ -43,7 +43,7 @@
   (filter (fn [row] (not (some nil? (vals row)))) observations))
 
 
-(defn rescale-feature
+(defn rescale-feature ; divide by zero!!!
   "rescales feature values, converting them into fractions; negative feature values are not scaled,
    because that would diminish the significance of the encoding; nils, if any, are also left as they are
    input: feature to rescale, observations

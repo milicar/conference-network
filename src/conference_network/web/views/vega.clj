@@ -96,7 +96,7 @@
                  :update      "hover ? hover.name : ''"}], ;can't make vega to deal with hover.screen-name,
                                                            ; so those are not displayed
 
-     :scales   [{:name "color", :type "ordinal", :range {:scheme "category10"}}],
+     :scales   [{:name "color", :type "ordinal", :range {:scheme "set2"}}],
 
      :marks    [{:name      "nodes",
                  :type      "symbol",

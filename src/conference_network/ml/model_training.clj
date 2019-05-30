@@ -153,11 +153,11 @@ parameter, using 10-fold cross-validation")
     pruned-tree))
 
 
-(let [classifiers (map #(partial tree-pruning-classifier %) (range 0.0 1.0 0.1))
-      scores  (map #(cv/k-fold-cross-validation % (vec train-val-swandata) 10 :f1-score) classifiers)
-      output (into (sorted-map) (zipmap (range 0.0 1.0 0.1) scores))]
+(let [mingains (range 0.3 0.6 0.05)
+      classifiers (map #(partial tree-pruning-classifier %) mingains)
+      scores  (map #(cv/k-fold-cross-validation % train-val-swandata 10 :f1-score) classifiers)
+      output (into (sorted-map) (zipmap mingains scores))]
   output)
-
 
 
 (comment "So far, the pruned tree with 0.4 as minimum gain seems to have the best results.
@@ -191,11 +191,11 @@ the pruned one.")
 (defn live-predict
   "gets graph and tweets from a page (request)
   input: map with graph and tweets {:graph g :tweets tw}
-  output: graph with nodes marked with class"
+  output: graph with nodes marked with class {:nodeID {:group x}})"
   [{:keys [graph tweets]}]
   (let [data-ready (extract-features graph tweets)
-        results (map #(tree/classify tree %) data-ready)
-        new-graph graph ;add nodes attributes!
-        ]
-    (assoc {} :graph new-graph :results results)))
+        results (map #(tree/classify final-tree %) data-ready)
+        nodes-attribs (map #(assoc {} (:id %1) {:group %2}) data-ready results)
+        new-graph (graph/add-nodes-attributes graph nodes-attribs)]
+    new-graph))
 

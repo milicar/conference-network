@@ -82,8 +82,14 @@
 (defn predict
   "predicts which nodes will not return next year"
   [{:keys [params] :as request}]
-  (pages/visualize (assoc request :graph
-                             (g/classify-graph-nodes (g/deserialize-graph(:predict params))))))
+  (let [params (read-string (:predict params))
+        graph  (g/deserialize-graph (:graph params))
+        tweets (:tweets params)
+        graph-and-tweets (assoc {} :graph graph :tweets tweets)
+        name (:name params)]
+    (pages/visualize (-> (assoc request :res-graph (model/live-predict graph-and-tweets)
+                                        :name name)
+                         (dissoc :params)))))
 
 (defn- get-form-params
   "supplies default dates if not entered in form;

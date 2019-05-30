@@ -1,8 +1,7 @@
 (ns conference-network.web.models.graph
   (:require [ubergraph.core :as ug]
             [loom.alg]
-            [conference-network.web.models.jungerer-graph :as jg]
-            [conference-network.ml.decision-tree :as dtree]))
+            [conference-network.web.models.jungerer-graph :as jg]))
 
 ; main ns for functions dealing with graphs
 ; some of the functions call conference-network.web.models.jungerer-graph ns
@@ -10,6 +9,15 @@
 (defn add-nodes
   [graph nodes-map]
   (ug/add-nodes-with-attrs* graph nodes-map))
+
+
+(defn add-nodes-attributes
+  "adds attributes to graph nodes, merging them with previous
+  input: ubergraph, sequence of maps {:nodeID {:attr1 value1 :attr2 value2}}
+  output: ubergraph"
+  [graph nodes-attribs-maps]
+  (reduce #(ug/add-attrs %1 (key (first %2)) (val (first %2))) graph nodes-attribs-maps))
+
 
 ; This structure is the result of tweets/update-edges-mentions and tweets/update-edges-replies;
 ; It has to be transformed here for ubergraph's function for adding edges
@@ -143,10 +151,3 @@
                  :in-cliques (% clique-nodes))
               (ug/nodes graph))))
 
-
-
-
-
-(defn classify-graph-nodes
-  "move this somewhere..? "
-  [graph])

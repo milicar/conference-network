@@ -96,6 +96,6 @@
              :let [{:keys [train-data validation-data]} (make-k-fold (vec data) k i)
                    tree       (classifier train-data)
                    avg-metric (metric (evaluate tree validation-data))]]
-         avg-metric)
+             avg-metric)
        (apply +)
        (* (double (/ 1 k)))))

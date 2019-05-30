@@ -14,8 +14,8 @@ h2{
 }
 
 div{
-    margin-left: 10%;
-    margin-right: 10%;
+    margin-left: 5%;
+    margin-right: 5%;
 }
 
 #login{
@@ -57,6 +57,16 @@ div{
 
 .vega-actions-wrapper {
     visibility: hidden;
+}
+
+#graphcontainer {
+    display: inline-block;
+    width: 50%;
+}
+
+#vegacredit {
+    float: right;
+    width: 20%;
 }
 
 

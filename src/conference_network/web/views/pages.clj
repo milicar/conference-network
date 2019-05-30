@@ -85,24 +85,39 @@
          [:input {:type "submit" :value "Delete graph"}]]]])))
 
 (defn visualize
-  [{:keys [params tweets-and-graph] :as all}]
+  [{:keys [params tweets-and-graph res-graph] :as all}]
   (layout/viz
     [all]
-    [:h1 (if-let [gr-name (:graph-name params)]
-           (str gr-name " graph")
-           (str "Graph for search terms: " (:hashtags params)))]
-    [:div#view]
-    [:script (str "vegaEmbed('#view', " (vega/make-vega-spec (:graph tweets-and-graph)) ");")]
-    [:div#vegacredit
-     [:p "Visualization by " [:a {:href "https://vega.github.io/vega/"} "Vega"]]]
-    [:form {:action "/predict" :method "POST"}
-     [:input {:type "hidden" :name "predict" :value (graph/serialize-graph (:graph tweets-and-graph))}]
-     [:input {:type "submit" :value "Predict"}]]
+    [:h1 (if-let [name (:name all)]
+           (str "Graph: " name)
+           (if-let [gr-name (:graph-name params)]
+           (str "Graph: " gr-name)
+           (str "Graph: " (:hashtags params))))]
+    (if-let [result res-graph]
+      [:div
+       [:div#graphcontainer
+        [:div#view]
+        [:script (str "vegaEmbed('#view', " (vega/make-vega-spec result) ");")]]
+       [:div#vegacredit
+        [:p "Visualization by " [:a {:href "https://vega.github.io/vega/"} "Vega\n"]]
+        [:div "Participants that are classified as those that will not come back to conference next year:"
+         [:p (for [x (filter #(= 0 (:group %)) (vals (:attrs res-graph)))]
+               [:li (str (:name x) " (@" (:screen-name x) ")")])]]]]
+      [:div
+       [:div#graphcontainer
+        [:div#view]
+        [:script (str "vegaEmbed('#view', " (vega/make-vega-spec (:graph tweets-and-graph)) ");")]]
+       [:div#vegacredit
+        [:p "Visualization by " [:a {:href "https://vega.github.io/vega/"} "Vega"]]
+        [:form {:action "/predict" :method "POST"}
+         [:input {:type "hidden" :name "predict" :value (assoc {} :graph (graph/serialize-graph (:graph tweets-and-graph))
+                                                                  :name (or (:graph-name params) (:hashtags params))
+                                                                  :tweets (:tweets tweets-and-graph))}]
+         [:input {:type "submit" :value "Predict"}]]]])
     ; print if no vega:
     ;[:div (with-out-str (ubergraph.core/pprint (:graph params)))]
     ; bug! graph equality: "value objects" so two equal graphs can have != ids
     ; so testing serialized value for existence in db, but sometimes it gets it wrong!
-    ;[:div (str all)]
     (when-not (nil? (session/get :user))
       (when (empty? (db/get-graph-by-value (graph/serialize-graph (:graph tweets-and-graph))))
         [:div#unimportant
