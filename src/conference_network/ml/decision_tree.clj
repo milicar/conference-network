@@ -19,7 +19,7 @@
   output: map {true [rec1 rec2], false [rec3]}"
   [rows column value]
   (let [operator (operator value)]
-     (group-by #((eval operator) (column %) value) rows)))
+    (group-by #((eval operator) (column %) value) rows)))
 
 
 (defn unique-counts
@@ -39,12 +39,12 @@
   output: double"
   ([rows]
    (let [total  (count rows)
-        counts (unique-counts rows)]
+         counts (unique-counts rows)]
      (gini-impurity total counts)))
   ([total counts]
-    (->> (map #(square (double (/ (:count %) total))) counts)
-         (apply +)
-         (- 1))))
+   (->> (map #(square (double (/ (:count %) total))) counts)
+        (apply +)
+        (- 1))))
 
 
 (defn distinct-feature-values
@@ -55,7 +55,7 @@
   output: seq of distinct [:column value] combinations"
   [rows]
   (->> (reduce #(into %1 (seq %2)) #{} rows)
-       (filter #(not (= :result (key %)))))) ;should removing result be in building tree fn?
+       (filter #(not (= :result (key %))))))                ;should removing result be in building tree fn?
 
 
 (defn find-best-split
@@ -88,9 +88,9 @@
   input: output of find-best-split function
   output: map"
   [split-data children]
-  {:column (first (:split-on split-data))
-   :value (second (:split-on split-data))
-   :branch-true (first children)
+  {:column       (first (:split-on split-data))
+   :value        (second (:split-on split-data))
+   :branch-true  (first children)
    :branch-false (second children)})
 
 (defn leaf
@@ -119,15 +119,15 @@
    (build-tree rows gini-impurity))
   ([rows score-fn]
    (let [rows (filter-out-empty-rows rows)]
-    (if (= 0 (count rows))
-      (leaf rows)
-      (let [col-val-combos (distinct-feature-values rows)      ;all the combos to check
-            best-split (find-best-split rows col-val-combos score-fn)]
-        (if (> (:gain best-split) 0.0)
-          (let [true-split (get best-split true)
-                false-split (get best-split false)]
-            (branch best-split (map #(build-tree % gini-impurity) [true-split false-split])))
-          (leaf best-split)))))))
+     (if (= 0 (count rows))
+       (leaf rows)
+       (let [col-val-combos (distinct-feature-values rows)  ;all the combos to check
+             best-split     (find-best-split rows col-val-combos score-fn)]
+         (if (> (:gain best-split) 0.0)
+           (let [true-split  (get best-split true)
+                 false-split (get best-split false)]
+             (branch best-split (map #(build-tree % gini-impurity) [true-split false-split])))
+           (leaf best-split)))))))
 
 
 (defn classify
@@ -141,7 +141,7 @@
      nil
      (if (:results tree)
        (let [results        (:results tree)
-             best-guess (apply max-key :count results)
+             best-guess     (apply max-key :count results)
              class          (:result best-guess)
              total-counts   (apply + (reduce #(conj %1 (:count %2)) () results))
              probability    (double (/ (:count best-guess) total-counts))
@@ -170,16 +170,16 @@
   input: two nodes to be pruned potentially, minimum gain, score function
   output: true/false"
   [true-branch false-branch min-gain score-fn]
-  (let [true-results (:results true-branch)
+  (let [true-results  (:results true-branch)
         false-results (:results false-branch)
-        parent-node (merge-leaves-results true-results false-results)
-        parent-total (apply + (map :count parent-node))
-        true-total (apply + (map :count true-results))
-        false-total (apply + (map :count false-results))
-        score-parent (score-fn parent-total parent-node)
-        score-true (score-fn true-total true-results)
-        score-false (score-fn false-total false-results)
-        gain (double (- score-parent (/ (+ score-true score-false) 2)))]
+        parent-node   (merge-leaves-results true-results false-results)
+        parent-total  (apply + (map :count parent-node))
+        true-total    (apply + (map :count true-results))
+        false-total   (apply + (map :count false-results))
+        score-parent  (score-fn parent-total parent-node)
+        score-true    (score-fn true-total true-results)
+        score-false   (score-fn false-total false-results)
+        gain          (double (- score-parent (/ (+ score-true score-false) 2)))]
     (< gain min-gain)))
 
 
@@ -190,14 +190,15 @@
   [tree min-gain score-fn]
   (if (contains? tree :results)
     tree
-    (let [true-branch  (prune (:branch-true tree) min-gain score-fn)
-          false-branch (prune (:branch-false tree) min-gain score-fn)]
-      (if (and (contains? true-branch :results)
-               (contains? false-branch :results))
-        (if (should-be-pruned? true-branch false-branch min-gain score-fn)
-          (-> (dissoc tree :branch-true :branch-false)
-              (assoc :results
-                     (merge-leaves-results (:results true-branch) (:results false-branch))))
-          tree)
-        tree))))
+    (let [current-tree {:column       (:column tree)
+                        :value        (:value tree)
+                        :branch-true  (prune (:branch-true tree) min-gain score-fn)
+                        :branch-false (prune (:branch-false tree) min-gain score-fn)}]
+      (if (and (contains? (:branch-true current-tree) :results)
+               (contains? (:branch-false current-tree) :results)
+               (should-be-pruned? (:branch-true current-tree) (:branch-false current-tree) min-gain score-fn))
+        (-> (assoc {} :results
+                      (merge-leaves-results (:results (:branch-true current-tree)) (:results (:branch-false current-tree)))))
+        current-tree))
+    ))
 

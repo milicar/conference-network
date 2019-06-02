@@ -210,25 +210,25 @@ parameter, using 10-fold cross-validation")
         pruned-tree (tree/prune tree mingain tree/gini-impurity)]
     pruned-tree))
 
-
-(let [mingains (range 0.1 1.0 0.05)
+(comment "Maximum gain from splitting, when there are two classes, is 0.5; with threshold for minimum gain over
+0.5, the tree is certainly collapsed (potentially even before that")
+(let [mingains (range 0.0 0.55 0.05)
       classifiers (map #(partial tree-pruning-classifier %) mingains)
       scores  (map #(cv/k-fold-cross-validation % train-val-data 10 :f1-score) classifiers)
       output (into (sorted-map) (zipmap mingains scores))]
   output)
 
-; with added data it's all the same up to mingain of 0.5, and then again all the same
-; (very low score) up to mingain of 1.0 ???
-(comment "So far, the pruned tree with 0.4 as minimum gain seems to have the best results.
+
+(comment "So far, the pruned tree with 0.3 as minimum gain seems to have the best results.
 Comparing its performance on test data with basic tree with no pruning, the two are the same.
 In the case of same predictive power, the simpler model should be used. Here it is (potentially)
 the pruned one.")
 
-(cv/evaluate (tree-pruning-classifier 0.4 train-val-data) test-data)
+(cv/evaluate (tree-pruning-classifier 0.3 train-val-data) test-data)
 ; {:accuracy 0.75, :error 0.25, :precision 0.5, :recall 1.0, :f1-score 0.6666666666666666}
 ; {:accuracy 0.5833333333333333, :error 0.41666666666666674, :precision 0.8, :recall 0.5, :f1-score 0.6153846153846154}
 
-(def final-tree (tree-pruning-classifier 0.4 train-val-data))
+(def final-tree (tree-pruning-classifier 0.3 (concat train-val-data test-data)))
 
 
 
