@@ -694,12 +694,16 @@
                    {:f0 4 :f1 0 :f1a 3 :f2 -1 :result "1"}
                    {:f0 -1 :f1 0 :f1a 4 :f2 0 :result "1"}
                    {:f0 -1 :f1 0 :f1a 1.5 :f2 0 :result "1"}]]
-         (dtree/build-tree rows :max-depth 0) => ; it would be nicer to test with (= 0 (depth tree))
-         {:results '({:result "2" :count 8}{:result "1" :count 4})}
+         (dtree/build-tree rows :max-depth 0) =>
+         {:results '({:result "2" :count 8} {:result "1" :count 4})}
+         (dtree/tree-depth (dtree/build-tree rows :max-depth 0)) => 0
+
          (dtree/build-tree rows :max-depth 1)
          {:column       :f0, :value 0
           :branch-true  {:results '({:result "2", :count 8} {:result "1", :count 2})},
           :branch-false {:results '({:result "1", :count 2})}}
+         (dtree/tree-depth (dtree/build-tree rows :max-depth 1)) => 1
+
          (dtree/build-tree rows :max-depth 2) =>
          {:column       :f0, :value 0
           :branch-true  {:column       :f2,
@@ -707,6 +711,8 @@
                          :branch-true  {:results '({:result "2", :count 8} {:result "1", :count 1})},
                          :branch-false {:results '({:result "1", :count 1})}},
           :branch-false {:results '({:result "1", :count 2})}}
+         (dtree/tree-depth (dtree/build-tree rows :max-depth 2)) => 2
+
          (dtree/build-tree rows :max-depth 3) =>
          {:column       :f0,
           :value        0,
@@ -718,6 +724,8 @@
                                         :branch-false {:results '({:result "2", :count 7})}},
                          :branch-false {:results '({:result "1", :count 1})}},
           :branch-false {:results '({:result "1", :count 2})}}
+         (dtree/tree-depth (dtree/build-tree rows :max-depth 3)) => 3
+
          (dtree/build-tree rows :max-depth 4) =>
          {:column       :f0,
           :value        0,
@@ -732,6 +740,9 @@
                                         :branch-false {:results '({:result "2", :count 7})}},
                          :branch-false {:results '({:result "1", :count 1})}},
           :branch-false {:results '({:result "1", :count 2})}}
+         (dtree/tree-depth (dtree/build-tree rows :max-depth 4)) => 4
+
+
          (dtree/build-tree rows :max-depth 5) =>
          {:column       :f0,
           :value        0,
@@ -745,4 +756,47 @@
                                                        :branch-false {:results '({:result "1", :count 1})}},
                                         :branch-false {:results '({:result "2", :count 7})}},
                          :branch-false {:results '({:result "1", :count 1})}},
-          :branch-false {:results '({:result "1", :count 2})}}))
+          :branch-false {:results '({:result "1", :count 2})}}
+         (dtree/tree-depth (dtree/build-tree rows :max-depth 5)) => 4))
+
+
+(facts "calculating tree depth"
+      (fact "tree has only one leaf"
+            (let [tree {:results '({:result "2" :count 8} {:result "1" :count 4})}]
+              (dtree/tree-depth tree) => 0))
+      (fact "tree with one branching"
+            (let [tree {:column       :f0, :value 0
+                        :branch-true  {:results '({:result "2", :count 8} {:result "1", :count 2})},
+                        :branch-false {:results '({:result "1", :count 2})}}]
+              (dtree/tree-depth tree) => 1))
+      (fact "deeper, asymmetric trees"
+            (let [tree {:column       :f0, :value 0
+                        :branch-true  {:column       :f2,
+                                       :value        0,
+                                       :branch-true  {:results '({:result "2", :count 8} {:result "1", :count 1})},
+                                       :branch-false {:results '({:result "1", :count 1})}},
+                        :branch-false {:results '({:result "1", :count 2})}}]
+              (dtree/tree-depth tree) => 2)
+            (let [tree {:column       :f0,
+                        :value        0,
+                        :branch-true  {:column       :f2,
+                                       :value        0,
+                                       :branch-true {:results '({:result "1", :count 1})},
+                                       :branch-false  {:column       :f2,
+                                                      :value        4,
+                                                      :branch-true  {:results '({:result "2", :count 1} {:result "1", :count 1})},
+                                                      :branch-false {:results '({:result "2", :count 7})}}},
+                        :branch-false {:results '({:result "1", :count 2})}}]
+              (dtree/tree-depth tree) => 3)
+            (let [tree {:column       :f-1 :value -1
+                        :branch-true  {:column       :f0 :value 0
+                                       :branch-true  {:column       :f1 :value 1
+                                                      :branch-true  {:results '({:result "2" :count 10})}
+                                                      :branch-false {:column       :f2 :value 3
+                                                                     :branch-true  {:results '({:result "1" :count 20})}
+                                                                     :branch-false {:results '({:result "2" :count 2})}}}
+                                       :branch-false {:column       :f1a :value 1.5
+                                                      :branch-true  {:results '({:result "1" :count 100})}
+                                                      :branch-false {:results '({:result "2" :count 1})}}}
+                        :branch-false {:results '({:result "1" :count 5})}}]
+              (dtree/tree-depth tree)) => 4))

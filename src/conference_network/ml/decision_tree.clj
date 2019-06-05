@@ -209,6 +209,12 @@
                (should-be-pruned? (:branch-true current-tree) (:branch-false current-tree) min-gain score-fn))
         (-> (assoc {} :results
                       (merge-leaves-results (:results (:branch-true current-tree)) (:results (:branch-false current-tree)))))
-        current-tree))
-    ))
+        current-tree))))
 
+
+(defn tree-depth
+  [tree]
+  (if (contains? tree :results)
+    0
+    (->> (map #(inc (tree-depth %)) (list (:branch-true tree) (:branch-false tree)))
+         (apply max))))
