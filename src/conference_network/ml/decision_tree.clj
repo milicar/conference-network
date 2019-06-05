@@ -114,29 +114,34 @@
 
 (defn- tree-internal
   "private function for building a tree with current depth passed as a parameter"
-  [rows score-fn max-depth current-depth]
-  ;(str max-depth current-depth))
+  [rows score-fn max-depth current-depth min-node-size]
   (let [rows (filter-out-empty-rows rows)]
     (if (= 0 (count rows))
       (leaf rows)
-      (let [col-val-combos (distinct-feature-values rows)  ;all the combos to check
-            best-split     (find-best-split rows col-val-combos score-fn)]
-        (if (and (> (:gain best-split) 0.0) (< current-depth max-depth))
-          (let [true-split  (get best-split true)
-                false-split (get best-split false)]
-            (branch best-split (map #(tree-internal % gini-impurity max-depth (inc current-depth))
-                                    [true-split false-split])))
+      (let [col-val-combos    (distinct-feature-values rows) ;all the combos to check
+            best-split        (find-best-split rows col-val-combos score-fn)
+            true-split        (get best-split true)
+            false-split       (get best-split false)
+            smaller-node-size (min (count true-split) (count false-split))
+            gain-ok?          (> (:gain best-split) 0.0)
+            depth-ok?         (< current-depth max-depth)
+            node-size-ok?     (>= smaller-node-size min-node-size)]
+        (if (and gain-ok? depth-ok? node-size-ok?)
+          (branch best-split (map
+                               #(tree-internal % gini-impurity max-depth (inc current-depth) min-node-size)
+                               [true-split false-split]))
           (leaf best-split))))))
 
 
 (defn build-tree
   "builds a tree of maps; calls private function for actual work
-  input: rows/observations, optional named params: score function, maximum depth of the tree
+  input: rows/observations, optional named params: score function, maximum depth of the tree, minimum node size
   output: tree structure of maps"
-  [rows & {:keys [score-fn max-depth]
-           :or {score-fn gini-impurity
-                max-depth java.lang.Short/MAX_VALUE}}]
-   (tree-internal rows score-fn max-depth 0))
+  [rows & {:keys [score-fn max-depth min-node-size]
+           :or   {score-fn      gini-impurity
+                  max-depth     java.lang.Short/MAX_VALUE
+                  min-node-size 1}}]
+  (tree-internal rows score-fn max-depth 0 min-node-size))
 
 
 

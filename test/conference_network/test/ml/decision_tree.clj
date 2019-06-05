@@ -677,8 +677,7 @@
                                          (:results (:branch-false tree))
                                          (dtree/merge-leaves-results mergedTF
                                                                      (dtree/merge-leaves-results mergedTTT mergedTTF)))) =>
-               (roughly 0.31 0.01)                          ; gain from this split is 0.31-0.33/2 = 0.145
-               )))
+               (roughly 0.31 0.01))))                          ; gain from this split is 0.31-0.33/2 = 0.145
 
 
 (facts "building tree up to maximum depth"
@@ -800,3 +799,103 @@
                                                       :branch-false {:results '({:result "2" :count 1})}}}
                         :branch-false {:results '({:result "1" :count 5})}}]
               (dtree/tree-depth tree)) => 4))
+
+
+(facts "building tree up to minimum node size"
+       (let [rows [{:f0 0 :f1 1 :f1a 0 :f2 1 :result "2"}
+                   {:f0 0 :f1 1 :f1a 0 :f2 2 :result "2"}
+                   {:f0 1 :f1 1 :f1a 0 :f2 2 :result "2"}
+                   {:f0 1 :f1 0 :f1a 5 :f2 1 :result "2"}
+                   {:f0 2 :f1 0 :f1a 5 :f2 1 :result "2"}
+                   {:f0 2 :f1 0 :f1a 3 :f2 4 :result "2"}
+                   {:f0 4 :f1 1 :f1a 1 :f2 0 :result "2"}
+                   {:f0 4 :f1 1 :f1a 1 :f2 0 :result "2"}
+                   {:f0 4 :f1 1 :f1a 1.5 :f2 4 :result "1"}
+                   {:f0 4 :f1 0 :f1a 3 :f2 -1 :result "1"}
+                   {:f0 -1 :f1 0 :f1a 4 :f2 0 :result "1"}
+                   {:f0 -1 :f1 0 :f1a 1.5 :f2 0 :result "1"}]]
+         (dtree/build-tree rows :min-node-size 10) =>
+         {:results '({:result "2" :count 8} {:result "1" :count 4})}
+
+         (dtree/build-tree rows :min-node-size 5) =>
+         {:results '({:result "2" :count 8} {:result "1" :count 4})}
+
+         (dtree/build-tree rows :min-node-size 2) =>
+         {:column       :f0, :value 0
+          :branch-true  {:results '({:result "2", :count 8} {:result "1", :count 2})},
+          :branch-false {:results '({:result "1", :count 2})}}
+
+         (dtree/build-tree rows :min-node-size 1) =>
+         {:column       :f0,
+          :value        0,
+          :branch-true  {:column       :f2,
+                         :value        0,
+                         :branch-true  {:column       :f2,
+                                        :value        4,
+                                        :branch-true  {:column       :f1a,
+                                                       :value        3,
+                                                       :branch-true  {:results '({:result "2", :count 1})},
+                                                       :branch-false {:results '({:result "1", :count 1})}},
+                                        :branch-false {:results '({:result "2", :count 7})}},
+                         :branch-false {:results '({:result "1", :count 1})}},
+          :branch-false {:results '({:result "1", :count 2})}}))
+
+
+(facts "building tree with respect to minimum node size and maximum depth"
+       (let [rows [{:f0 0 :f1 1 :f1a 0 :f2 1 :result "2"}
+                   {:f0 0 :f1 1 :f1a 0 :f2 2 :result "2"}
+                   {:f0 1 :f1 1 :f1a 0 :f2 2 :result "2"}
+                   {:f0 1 :f1 0 :f1a 5 :f2 1 :result "2"}
+                   {:f0 2 :f1 0 :f1a 5 :f2 1 :result "2"}
+                   {:f0 2 :f1 0 :f1a 3 :f2 4 :result "2"}
+                   {:f0 4 :f1 1 :f1a 1 :f2 0 :result "2"}
+                   {:f0 4 :f1 1 :f1a 1 :f2 0 :result "2"}
+                   {:f0 4 :f1 1 :f1a 1.5 :f2 4 :result "1"}
+                   {:f0 4 :f1 0 :f1a 3 :f2 -1 :result "1"}
+                   {:f0 -1 :f1 0 :f1a 4 :f2 0 :result "1"}
+                   {:f0 -1 :f1 0 :f1a 1.5 :f2 0 :result "1"}]]
+
+         (dtree/build-tree rows :max-depth 3 :min-node-size 1) =>
+         {:column       :f0,
+          :value        0,
+          :branch-true  {:column       :f2,
+                         :value        0,
+                         :branch-true  {:column       :f2,
+                                        :value        4,
+                                        :branch-true  {:results '({:result "2", :count 1} {:result "1", :count 1})},
+                                        :branch-false {:results '({:result "2", :count 7})}},
+                         :branch-false {:results '({:result "1", :count 1})}},
+          :branch-false {:results '({:result "1", :count 2})}}
+         (dtree/tree-depth (dtree/build-tree rows :max-depth 3 :min-node-size 1)) => 3
+
+         (dtree/build-tree rows :max-depth 3 :min-node-size 2) =>
+         {:column       :f0, :value 0
+          :branch-true  {:results '({:result "2", :count 8} {:result "1", :count 2})},
+          :branch-false {:results '({:result "1", :count 2})}}
+         (dtree/tree-depth (dtree/build-tree rows :max-depth 3 :min-node-size 2)) => 1
+
+         (dtree/build-tree rows :max-depth 5 :min-node-size 1) =>
+         {:column       :f0,
+          :value        0,
+          :branch-true  {:column       :f2,
+                         :value        0,
+                         :branch-true  {:column       :f2,
+                                        :value        4,
+                                        :branch-true  {:column       :f1a,
+                                                       :value        3,
+                                                       :branch-true  {:results '({:result "2", :count 1})},
+                                                       :branch-false {:results '({:result "1", :count 1})}},
+                                        :branch-false {:results '({:result "2", :count 7})}},
+                         :branch-false {:results '({:result "1", :count 1})}},
+          :branch-false {:results '({:result "1", :count 2})}}
+         (dtree/tree-depth (dtree/build-tree rows :max-depth 5 :min-node-size 1)) => 4
+
+         (dtree/build-tree rows :max-depth 5 :min-node-size 2) =>
+         {:column       :f0, :value 0
+          :branch-true  {:results '({:result "2", :count 8} {:result "1", :count 2})},
+          :branch-false {:results '({:result "1", :count 2})}}
+         (dtree/tree-depth (dtree/build-tree rows :max-depth 5 :min-node-size 2)) => 1
+
+         (dtree/build-tree rows :max-depth 5 :min-node-size 3) =>
+         {:results '({:result "2" :count 8} {:result "1" :count 4})}
+         (dtree/tree-depth (dtree/build-tree rows :max-depth 5 :min-node-size 3)) => 0))
