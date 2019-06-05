@@ -494,11 +494,11 @@
 (facts "pruning with actual minimum gains thresholds"
        (fact "having a good split at the leaves prevents the tree from getting pruned; gains up the
               branch are smaller"
-             (let [tree {:column       :f1 :value 1
-                         :branch-true  {:column       :f2 :value 2
-                                        :branch-true  {:results '({:result "1" :count 20})}
-                                        :branch-false {:results '({:result "2" :count 20})}}
-                         :branch-false {:results '({:result "1" :count 2})}}
+             (let [tree          {:column       :f1 :value 1
+                                  :branch-true  {:column       :f2 :value 2
+                                                 :branch-true  {:results '({:result "1" :count 20})}
+                                                 :branch-false {:results '({:result "2" :count 20})}}
+                                  :branch-false {:results '({:result "1" :count 2})}}
                    leafTT        (get-in tree [:branch-true :branch-true])
                    leafTF        (get-in tree [:branch-true :branch-false])
                    leaves-merged (dtree/merge-leaves-results (:results leafTT)
@@ -516,13 +516,13 @@
                (contains {:results '({:result "1" :count 22} {:result "2" :count 20})})))
 
        (fact "splits at leaves may have different gains"
-             (let [tree {:column       :f1 :value 1
-                         :branch-true  {:column       :f2 :value 2
-                                        :branch-true  {:results '({:result "1" :count 10})}
-                                        :branch-false {:results '({:result "2" :count 10})}}
-                         :branch-false {:column       :f2 :value 3
-                                        :branch-true  {:results '({:result "1" :count 20})}
-                                        :branch-false {:results '({:result "2" :count 2})}}}
+             (let [tree                {:column       :f1 :value 1
+                                        :branch-true  {:column       :f2 :value 2
+                                                       :branch-true  {:results '({:result "1" :count 10})}
+                                                       :branch-false {:results '({:result "2" :count 10})}}
+                                        :branch-false {:column       :f2 :value 3
+                                                       :branch-true  {:results '({:result "1" :count 20})}
+                                                       :branch-false {:results '({:result "2" :count 2})}}}
                    leafTT              (get-in tree [:branch-true :branch-true])
                    leafTF              (get-in tree [:branch-true :branch-false])
                    leafFT              (get-in tree [:branch-false :branch-true])
@@ -541,19 +541,19 @@
                           :branch-false {:results false-leaves-merged}})))
 
        (fact "deeper tree with different gains at leaves"
-             (let [tree {:column       :f-1 :value -1
-                         :branch-true  {:column       :f0 :value 0
-                                        :branch-true  {:column       :f1 :value 1
-                                                       :branch-true  {:column       :f2 :value 2
-                                                                      :branch-true  {:results '({:result "1" :count 10})}
-                                                                      :branch-false {:results '({:result "2" :count 10})}}
-                                                       :branch-false {:column       :f2 :value 3
-                                                                      :branch-true  {:results '({:result "1" :count 20})}
-                                                                      :branch-false {:results '({:result "2" :count 2})}}}
-                                        :branch-false {:column       :f1a :value 1.5
-                                                       :branch-true  {:results '({:result "1" :count 100})}
-                                                       :branch-false {:results '({:result "2" :count 1})}}}
-                         :branch-false {:results '({:result "1" :count 5})}}
+             (let [tree      {:column       :f-1 :value -1
+                              :branch-true  {:column       :f0 :value 0
+                                             :branch-true  {:column       :f1 :value 1
+                                                            :branch-true  {:column       :f2 :value 2
+                                                                           :branch-true  {:results '({:result "1" :count 10})}
+                                                                           :branch-false {:results '({:result "2" :count 10})}}
+                                                            :branch-false {:column       :f2 :value 3
+                                                                           :branch-true  {:results '({:result "1" :count 20})}
+                                                                           :branch-false {:results '({:result "2" :count 2})}}}
+                                             :branch-false {:column       :f1a :value 1.5
+                                                            :branch-true  {:results '({:result "1" :count 100})}
+                                                            :branch-false {:results '({:result "2" :count 1})}}}
+                              :branch-false {:results '({:result "1" :count 5})}}
 
                    leafTTTT  (get-in tree [:branch-true :branch-true :branch-true :branch-true])
                    leafTTTF  (get-in tree [:branch-true :branch-true :branch-true :branch-false])
@@ -667,15 +667,82 @@
                (comment "here, minimum gain threshold is higer than highest gain in the tree, which is a split of
                TTT branch, and when that is merged, all the other gains up the tree are smaller, and the tree collapses.")
                (dtree/gini-impurity 42 (dtree/merge-leaves-results mergedTTT mergedTTF)) =>
-               (roughly 0.36 0.1) ; so, gain from this split is 0.36-(0.49+0.15)/2 = 0.04
+               (roughly 0.36 0.1)                           ; so, gain from this split is 0.36-(0.49+0.15)/2 = 0.04
 
                (dtree/gini-impurity 53 (dtree/merge-leaves-results mergedTF
                                                                    (dtree/merge-leaves-results mergedTTT mergedTTF))) =>
-               (roughly 0.33 0.01) ; gain from this split is 0.33-(0.16+0.36)/2 = 0.07
+               (roughly 0.33 0.01)                          ; gain from this split is 0.33-(0.16+0.36)/2 = 0.07
 
                (dtree/gini-impurity 58 (dtree/merge-leaves-results
                                          (:results (:branch-false tree))
                                          (dtree/merge-leaves-results mergedTF
                                                                      (dtree/merge-leaves-results mergedTTT mergedTTF)))) =>
-               (roughly 0.31 0.01) ; gain from this split is 0.31-0.33/2 = 0.145
+               (roughly 0.31 0.01)                          ; gain from this split is 0.31-0.33/2 = 0.145
                )))
+
+
+(facts "building tree up to maximum depth"
+       (let [rows [{:f0 0 :f1 1 :f1a 0 :f2 1 :result "2"}
+                   {:f0 0 :f1 1 :f1a 0 :f2 2 :result "2"}
+                   {:f0 1 :f1 1 :f1a 0 :f2 2 :result "2"}
+                   {:f0 1 :f1 0 :f1a 5 :f2 1 :result "2"}
+                   {:f0 2 :f1 0 :f1a 5 :f2 1 :result "2"}
+                   {:f0 2 :f1 0 :f1a 3 :f2 4 :result "2"}
+                   {:f0 4 :f1 1 :f1a 1 :f2 0 :result "2"}
+                   {:f0 4 :f1 1 :f1a 1 :f2 0 :result "2"}
+                   {:f0 4 :f1 1 :f1a 1.5 :f2 4 :result "1"}
+                   {:f0 4 :f1 0 :f1a 3 :f2 -1 :result "1"}
+                   {:f0 -1 :f1 0 :f1a 4 :f2 0 :result "1"}
+                   {:f0 -1 :f1 0 :f1a 1.5 :f2 0 :result "1"}]]
+         (dtree/build-tree rows :max-depth 0) => ; it would be nicer to test with (= 0 (depth tree))
+         {:results '({:result "2" :count 8}{:result "1" :count 4})}
+         (dtree/build-tree rows :max-depth 1)
+         {:column       :f0, :value 0
+          :branch-true  {:results '({:result "2", :count 8} {:result "1", :count 2})},
+          :branch-false {:results '({:result "1", :count 2})}}
+         (dtree/build-tree rows :max-depth 2) =>
+         {:column       :f0, :value 0
+          :branch-true  {:column       :f2,
+                         :value        0,
+                         :branch-true  {:results '({:result "2", :count 8} {:result "1", :count 1})},
+                         :branch-false {:results '({:result "1", :count 1})}},
+          :branch-false {:results '({:result "1", :count 2})}}
+         (dtree/build-tree rows :max-depth 3) =>
+         {:column       :f0,
+          :value        0,
+          :branch-true  {:column       :f2,
+                         :value        0,
+                         :branch-true  {:column       :f2,
+                                        :value        4,
+                                        :branch-true  {:results '({:result "2", :count 1} {:result "1", :count 1})},
+                                        :branch-false {:results '({:result "2", :count 7})}},
+                         :branch-false {:results '({:result "1", :count 1})}},
+          :branch-false {:results '({:result "1", :count 2})}}
+         (dtree/build-tree rows :max-depth 4) =>
+         {:column       :f0,
+          :value        0,
+          :branch-true  {:column       :f2,
+                         :value        0,
+                         :branch-true  {:column       :f2,
+                                        :value        4,
+                                        :branch-true  {:column       :f1a,
+                                                       :value        3,
+                                                       :branch-true  {:results '({:result "2", :count 1})},
+                                                       :branch-false {:results '({:result "1", :count 1})}},
+                                        :branch-false {:results '({:result "2", :count 7})}},
+                         :branch-false {:results '({:result "1", :count 1})}},
+          :branch-false {:results '({:result "1", :count 2})}}
+         (dtree/build-tree rows :max-depth 5) =>
+         {:column       :f0,
+          :value        0,
+          :branch-true  {:column       :f2,
+                         :value        0,
+                         :branch-true  {:column       :f2,
+                                        :value        4,
+                                        :branch-true  {:column       :f1a,
+                                                       :value        3,
+                                                       :branch-true  {:results '({:result "2", :count 1})},
+                                                       :branch-false {:results '({:result "1", :count 1})}},
+                                        :branch-false {:results '({:result "2", :count 7})}},
+                         :branch-false {:results '({:result "1", :count 1})}},
+          :branch-false {:results '({:result "1", :count 2})}}))

@@ -111,23 +111,33 @@
   (filter not-empty (flatten rows)))
 
 
+
+(defn- tree-internal
+  "private function for building a tree with current depth passed as a parameter"
+  [rows score-fn max-depth current-depth]
+  ;(str max-depth current-depth))
+  (let [rows (filter-out-empty-rows rows)]
+    (if (= 0 (count rows))
+      (leaf rows)
+      (let [col-val-combos (distinct-feature-values rows)  ;all the combos to check
+            best-split     (find-best-split rows col-val-combos score-fn)]
+        (if (and (> (:gain best-split) 0.0) (< current-depth max-depth))
+          (let [true-split  (get best-split true)
+                false-split (get best-split false)]
+            (branch best-split (map #(tree-internal % gini-impurity max-depth (inc current-depth))
+                                    [true-split false-split])))
+          (leaf best-split))))))
+
+
 (defn build-tree
-  "builds a tree of maps
-  input: rows/observations, optionally score function
+  "builds a tree of maps; calls private function for actual work
+  input: rows/observations, optional named params: score function, maximum depth of the tree
   output: tree structure of maps"
-  ([rows]
-   (build-tree rows gini-impurity))
-  ([rows score-fn]
-   (let [rows (filter-out-empty-rows rows)]
-     (if (= 0 (count rows))
-       (leaf rows)
-       (let [col-val-combos (distinct-feature-values rows)  ;all the combos to check
-             best-split     (find-best-split rows col-val-combos score-fn)]
-         (if (> (:gain best-split) 0.0)
-           (let [true-split  (get best-split true)
-                 false-split (get best-split false)]
-             (branch best-split (map #(build-tree % gini-impurity) [true-split false-split])))
-           (leaf best-split)))))))
+  [rows & {:keys [score-fn max-depth]
+           :or {score-fn gini-impurity
+                max-depth java.lang.Short/MAX_VALUE}}]
+   (tree-internal rows score-fn max-depth 0))
+
 
 
 (defn classify
