@@ -108,14 +108,14 @@
         [:div#view]
         [:script (str "vegaEmbed('#view', " (vega/make-vega-spec (:graph tweets-and-graph)) ");")]]
        [:div#vegacredit
-        [:p "Visualization by " [:a {:href "https://vega.github.io/vega/"} "Vega"]]
+        [:p "[Visualization by " [:a {:href "https://vega.github.io/vega/"} "Vega"] "]"]
+        [:br]
+        [:p "Which participants will not come back next year?"]
         [:form {:action "/predict" :method "POST"}
          [:input {:type "hidden" :name "predict" :value (assoc {} :graph (graph/serialize-graph (:graph tweets-and-graph))
                                                                   :name (or (:graph-name params) (:hashtags params))
                                                                   :tweets (:tweets tweets-and-graph))}]
          [:input {:type "submit" :value "Predict"}]]]])
-    ; print if no vega:
-    ;[:div (with-out-str (ubergraph.core/pprint (:graph params)))]
     ; bug! graph equality: "value objects" so two equal graphs can have != ids
     ; so testing serialized value for existence in db, but sometimes it gets it wrong!
     (when-not (nil? (session/get :user))

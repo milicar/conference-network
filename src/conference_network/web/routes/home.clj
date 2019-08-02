@@ -88,8 +88,12 @@
         graph-and-tweets (assoc {} :graph graph :tweets tweets)
         name (:name params)]
     (pages/visualize (-> (assoc request :res-graph (model/live-predict graph-and-tweets)
-                                        :name name)
-                         (dissoc :params)))))
+                                        :name name
+                                        :tweets-and-graph {:graph graph})
+                         (dissoc :params)
+                         ; viz page checks whether the graph from params is already in db and renders the save button or not
+                         ; that's why graph is sent again, but tweets are not!
+                         ))))
 
 (defn- get-form-params
   "supplies default dates if not entered in form;
